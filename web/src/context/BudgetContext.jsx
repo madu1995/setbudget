@@ -67,16 +67,19 @@ export const BudgetProvider = ({ children }) => {
     }
   };
 
-  const addParticipant = async (name) => {
+  const addParticipant = async (name, phone) => {
     if (!activeEvent) return;
     try {
       const res = await axios.post(`${API_URL}/participants`, {
         name,
+        phone,
         eventId: activeEvent._id
       });
       setParticipants([...participants, res.data]);
+      return res.data; // Return for component use
     } catch (err) {
       console.error(err);
+      throw err; // Throw for component to handle errors
     }
   };
 

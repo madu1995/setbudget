@@ -14,9 +14,28 @@ router.get("/event/:eventId", async (req, res) => {
 
 // Add new participant
 router.post("/", async (req, res) => {
+  const { name, phone, eventId } = req.body;
+
+  // Validation
+  if (!name) {
+    return res.status(400).json({ message: "Name is required" });
+  }
+
+  if (phone) {
+    const slPhoneRegex = /^(?:0|94|\+94)?7(?:0|1|2|4|5|6|7|8)\d{7}$/;
+    if (!slPhoneRegex.test(phone)) {
+      return res.status(400).json({ message: "Invalid Sri Lankan phone number" });
+    }
+  }
+
+  if (!eventId) {
+    return res.status(400).json({ message: "Event ID is required" });
+  }
+
   const participant = new Participant({
-    name: req.body.name,
-    eventId: req.body.eventId,
+    name,
+    phone,
+    eventId,
   });
 
   try {

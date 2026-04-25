@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { useBudget } from '../context/BudgetContext';
+import AddParticipantModal from './AddParticipantModal';
 
 const Container = styled.div`
   display: flex;
@@ -68,10 +69,10 @@ const avatarColors = ['#FF6B6B', '#4D96FF', '#6BCB77', '#FFD93D', '#917FB3', '#F
 
 export default function ParticipantList() {
   const { participants, addParticipant, activeEvent } = useBudget();
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const handleAdd = () => {
-    const name = prompt('Enter Attendee Name:');
-    if (name) addParticipant(name);
+  const handleAddParticipant = async (name, phone) => {
+    await addParticipant(name, phone);
   };
 
   if (!activeEvent) return null;
@@ -88,9 +89,15 @@ export default function ParticipantList() {
           </AttendeeChip>
         ))}
       </AttendeeGrid>
-      <AddBtn onClick={handleAdd}>
+      <AddBtn onClick={() => setIsModalOpen(true)}>
         <span>+</span> Add Participant
       </AddBtn>
+
+      <AddParticipantModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        onParticipantAdded={handleAddParticipant} 
+      />
     </Container>
   );
 }
