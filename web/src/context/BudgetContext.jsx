@@ -31,7 +31,7 @@ export const BudgetProvider = ({ children }) => {
   };
 
   const selectEvent = async (eventId) => {
-    const event = events.find(e => e._id === eventId);
+    const event = events.find(e => e._id.toString() === eventId.toString());
     setActiveEvent(event);
     if(eventId) {
       fetchParticipants(eventId);
@@ -121,6 +121,7 @@ export const BudgetProvider = ({ children }) => {
       addParticipant,
       addExpense,
       closeEvent,
+      fetchEvents, // Added to refresh events after modal addition
       totals,
       loading
     }}>

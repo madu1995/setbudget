@@ -2,6 +2,7 @@ import React from 'react';
 import styled from 'styled-components';
 import { useBudget } from '../context/BudgetContext';
 import { useNavigate } from 'react-router-dom';
+import AddEventModal from '../components/AddEventModal';
 
 const PageContainer = styled.div`
   padding: 40px;
@@ -64,17 +65,40 @@ const ViewBtn = styled.button`
 `;
 
 export default function Events() {
-  const { events, selectEvent } = useBudget();
+  const { events, selectEvent, fetchEvents } = useBudget();
   const navigate = useNavigate();
+  const [isModalOpen, setIsModalOpen] = React.useState(false);
 
   const handleManage = (id) => {
       selectEvent(id);
       navigate('/');
   };
 
+  const handleEventAdded = (newEvent) => {
+      fetchEvents(); // Refresh the list
+  };
+
   return (
     <PageContainer>
-      <Title>All Events</Title>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+        <Title style={{ marginBottom: 0 }}>All Events</Title>
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          style={{
+            backgroundColor: '#007BFF', color: 'white', padding: '10px 20px', 
+            border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold'
+          }}
+        >
+          + New Event
+        </button>
+      </div>
+
+      <AddEventModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        onEventAdded={handleEventAdded} 
+      />
+
       {events.length === 0 ? (
           <p style={{ color: '#6B7280' }}>You have not created any events yet.</p>
       ) : (

@@ -6,6 +6,14 @@ const eventSchema = new mongoose.Schema({
   totalBudget: { type: Number, default: 0 },
   isActive: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now },
+  category: { type: String, default: "Uncategorized" },
+  mode: { type: String, enum: ["quick", "detailed"], default: "quick" },
+  startDate: { type: Date },
+  endDate: { type: Date },
+  splitMethod: { type: String, default: "Equal Split" },
+  location: { type: String },
+  coverImage: { type: String },
+  participantsList: [{ type: String }] // Store emails or names of initial participants
 });
 
 module.exports = mongoose.model("Event", eventSchema);

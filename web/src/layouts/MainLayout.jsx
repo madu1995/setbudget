@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import styled, { createGlobalStyle } from 'styled-components';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useBudget } from '../context/BudgetContext';
+import AddEventModal from '../components/AddEventModal';
 
 const GlobalStyle = createGlobalStyle`
   body {
@@ -201,14 +202,26 @@ const MobileHeader = styled.div`
 `;
 
 export default function MainLayout() {
-  const { events, activeEvent, selectEvent, addEvent } = useBudget();
+  const { events, activeEvent, selectEvent, fetchEvents } = useBudget();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const isEventsPage = location.pathname === '/events';
 
   const handleSelectEvent = (id) => {
     selectEvent(id);
     setSidebarOpen(false);
     navigate('/'); // Always redirect to home to show the new selected event layout
+  };
+
+  const handleEventAdded = (newEvent) => {
+    fetchEvents();
+    if (newEvent && newEvent._id) {
+      selectEvent(newEvent._id);
+    }
+    navigate('/');
   };
 
   return (
@@ -254,16 +267,18 @@ export default function MainLayout() {
             <SearchInput placeholder="Search (Events/Activities...)" />
           </SearchContainer>
 
-          <NewEventBtn onClick={() => {
-            const name = prompt('Enter New Event Name:');
-            if(name) {
-                addEvent({ name, totalBudget: 0 });
-                navigate('/');
-            }
-          }}>
-            <span>+</span> New Event
-          </NewEventBtn>
+          {!isEventsPage && (
+            <NewEventBtn onClick={() => setIsModalOpen(true)}>
+              <span>+</span> New Event
+            </NewEventBtn>
+          )}
         </TopBar>
+
+        <AddEventModal 
+          isOpen={isModalOpen} 
+          onClose={() => setIsModalOpen(false)} 
+          onEventAdded={handleEventAdded} 
+        />
 
         {/* Dynamic Route Content */}
         <Outlet />
