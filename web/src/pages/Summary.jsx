@@ -1,6 +1,10 @@
 import React from 'react';
 import styled from 'styled-components';
 import { useBudget } from '../context/BudgetContext';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+
+// ... (styled components remain the same until exportToPDF)
 
 const PageContainer = styled.div`
   padding: 40px;
@@ -106,6 +110,100 @@ const Select = styled.select`
 export default function Summary() {
   const { events, activeEvent, selectEvent, settlementReport } = useBudget();
 
+  const exportToPDF = () => {
+    if (!activeEvent || !settlementReport) return;
+
+    try {
+      const doc = new jsPDF();
+      
+      // Title
+      doc.setFontSize(20);
+      doc.text(`Settlement Report: ${activeEvent.name}`, 14, 22);
+      
+      // Date and Location
+      doc.setFontSize(10);
+      doc.setTextColor(100);
+      let yPos = 28;
+      
+      if (activeEvent.startDate) {
+        const dateStr = new Date(activeEvent.startDate).toLocaleDateString() + 
+                        (activeEvent.endDate ? ` - ${new Date(activeEvent.endDate).toLocaleDateString()}` : '');
+        doc.text(`Date: ${dateStr}`, 14, yPos);
+        yPos += 6;
+      }
+      
+      if (activeEvent.location) {
+        doc.text(`Location: ${activeEvent.location}`, 14, yPos);
+        yPos += 6;
+      }
+      
+      // High level stats
+      doc.setTextColor(0);
+      doc.setFontSize(12);
+      doc.text(`Total Event Expense: LKR ${settlementReport.totalSpent.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, 14, yPos + 4);
+      doc.text(`Per-Person Share: LKR ${settlementReport.share.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, 14, yPos + 12);
+
+      // Balances Table
+      const tableColumn = ["Participant", "Total Paid", "Share", "Balance"];
+      const tableRows = [];
+
+      if (settlementReport.balances) {
+        settlementReport.balances.forEach(b => {
+          let balanceText = "Settled";
+          if (b.balance > 0.01) balanceText = `+LKR ${b.balance.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+          else if (b.balance < -0.01) balanceText = `Owes LKR ${Math.abs(b.balance).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+          
+          const rowData = [
+            b.name,
+            `LKR ${b.totalPaid.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+            `LKR ${b.share.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+            balanceText
+          ];
+          tableRows.push(rowData);
+        });
+      }
+
+      autoTable(doc, {
+        head: [tableColumn],
+        body: tableRows,
+        startY: yPos + 20,
+      });
+
+      // Transactions Section
+      const finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY : 50;
+      doc.setFontSize(16);
+      doc.text("How to Settle", 14, finalY + 15);
+
+      if (settlementReport.transactions && settlementReport.transactions.length > 0) {
+        const transColumn = ["From (Payer)", "To (Receiver)", "Amount"];
+        const transRows = [];
+
+        settlementReport.transactions.forEach(t => {
+          transRows.push([
+            t.from,
+            t.to,
+            `LKR ${t.amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+          ]);
+        });
+
+        autoTable(doc, {
+          head: [transColumn],
+          body: transRows,
+          startY: finalY + 20,
+          headStyles: { fillColor: [0, 123, 255] } // Primary blue
+        });
+      } else {
+        doc.setFontSize(12);
+        doc.text("All debts are settled! No transactions needed.", 14, finalY + 25);
+      }
+
+      doc.save(`${activeEvent.name.replace(/\s+/g, '_')}_Settlement_Report.pdf`);
+    } catch (err) {
+      console.error("Error generating PDF:", err);
+      alert("There was an error generating the PDF. Please try again.");
+    }
+  };
+
   return (
     <PageContainer>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '20px' }}>
@@ -128,7 +226,7 @@ export default function Summary() {
             </Select>
           </div>
         </div>
-        {activeEvent && <ActionButton>Download Report (PDF)</ActionButton>}
+        {activeEvent && <ActionButton onClick={exportToPDF}>Download Report (PDF)</ActionButton>}
       </div>
 
       {!activeEvent || !settlementReport ? (
