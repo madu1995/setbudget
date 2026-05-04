@@ -32,6 +32,9 @@ const EventCard = styled.div`
   padding: 24px;
   box-shadow: ${props => props.theme.shadows.base};
   border: 1px solid ${props => props.theme.colors.border};
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 `;
 
 const EventName = styled.h3`
@@ -128,10 +131,30 @@ export default function Events() {
                         {e.name}
                         <StatusTag active={e.isActive}>{e.isActive ? 'Active' : 'Archived'}</StatusTag>
                     </EventName>
-                    <div style={{ color: '#6B7280', fontSize: '0.9rem', marginBottom: '8px' }}>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '15px' }}>
+                      {e.startDate && (
+                        <div style={{ color: '#6B7280', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          📅 {new Date(e.startDate).toLocaleDateString()}
+                        </div>
+                      )}
+                      {e.location && (
+                        <div style={{ color: '#6B7280', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          📍 {e.location}
+                        </div>
+                      )}
+                      <div style={{ color: '#6B7280', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        👥 {e.participantCount || 0} Participants
+                      </div>
+                      <div style={{ color: '#1F2937', fontSize: '0.9rem', fontWeight: '600', marginTop: '4px' }}>
                         Budget: LKR {e.totalBudget > 0 ? e.totalBudget.toLocaleString() : 'Not Set'}
+                      </div>
+                      <div style={{ color: '#059669', fontSize: '0.9rem', fontWeight: '700' }}>
+                        Spent: LKR {e.totalSpent ? e.totalSpent.toLocaleString() : '0'}
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '10px' }}>
+
+                    <div style={{ display: 'flex', gap: '10px', marginTop: 'auto' }}>
                       <ViewBtn onClick={() => handleManage(e._id)}>Manage Event</ViewBtn>
                       {isAdmin && (
                         <ViewBtn style={{ color: '#DC2626', borderColor: '#DC2626' }} onClick={() => setManageModEventId(e._id)}>

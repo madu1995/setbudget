@@ -11,7 +11,22 @@ const Expense = require("../models/Expense");
 router.get("/", verifyToken, async (req, res) => {
   try {
     const events = await Event.find().sort({ createdAt: -1 });
-    res.json(events);
+    
+    // Enrich events with extra info
+    const enrichedEvents = await Promise.all(events.map(async (event) => {
+      const participantCount = await Participant.countDocuments({ eventId: event._id });
+      
+      const expenses = await Expense.find({ eventId: event._id });
+      const totalSpent = expenses.reduce((acc, curr) => acc + curr.amount, 0);
+      
+      return {
+        ...event.toObject(),
+        participantCount,
+        totalSpent
+      };
+    }));
+
+    res.json(enrichedEvents);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
