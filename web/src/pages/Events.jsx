@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import styled from 'styled-components';
 import { useBudget } from '../context/BudgetContext';
+import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import AddEventModal from '../components/AddEventModal';
+import ManageModeratorsModal from '../components/ManageModeratorsModal';
 
 const PageContainer = styled.div`
   padding: 40px;
@@ -66,8 +68,10 @@ const ViewBtn = styled.button`
 
 export default function Events() {
   const { events, selectEvent, fetchEvents } = useBudget();
+  const { isAdmin } = useAuth();
   const navigate = useNavigate();
-  const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [manageModEventId, setManageModEventId] = useState(null);
 
   const handleManage = (id) => {
       selectEvent(id);
@@ -82,21 +86,29 @@ export default function Events() {
     <PageContainer>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
         <Title style={{ marginBottom: 0 }}>All Events</Title>
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          style={{
-            backgroundColor: '#007BFF', color: 'white', padding: '10px 20px', 
-            border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold'
-          }}
-        >
-          + New Event
-        </button>
+        {isAdmin && (
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            style={{
+              backgroundColor: '#007BFF', color: 'white', padding: '10px 20px', 
+              border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold'
+            }}
+          >
+            + New Event
+          </button>
+        )}
       </div>
 
       <AddEventModal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
         onEventAdded={handleEventAdded} 
+      />
+
+      <ManageModeratorsModal 
+        isOpen={!!manageModEventId} 
+        onClose={() => setManageModEventId(null)} 
+        eventId={manageModEventId} 
       />
 
       {events.length === 0 ? (
@@ -112,7 +124,14 @@ export default function Events() {
                     <div style={{ color: '#6B7280', fontSize: '0.9rem', marginBottom: '8px' }}>
                         Budget: LKR {e.totalBudget > 0 ? e.totalBudget.toLocaleString() : 'Not Set'}
                     </div>
-                    <ViewBtn onClick={() => handleManage(e._id)}>Manage Event</ViewBtn>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <ViewBtn onClick={() => handleManage(e._id)}>Manage Event</ViewBtn>
+                      {isAdmin && (
+                        <ViewBtn style={{ color: '#DC2626', borderColor: '#DC2626' }} onClick={() => setManageModEventId(e._id)}>
+                          Moderators
+                        </ViewBtn>
+                      )}
+                    </div>
                 </EventCard>
             ))}
         </Grid>

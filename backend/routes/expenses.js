@@ -2,9 +2,10 @@ const express = require("express");
 const router = express.Router();
 const Expense = require("../models/Expense");
 const upload = require("../middleware/upload");
+const { verifyToken, canManageEvent } = require("../middleware/auth");
 
 // Get expenses for an event
-router.get("/event/:eventId", async (req, res) => {
+router.get("/event/:eventId", verifyToken, async (req, res) => {
   try {
     // Populate 'paidBy' to easily get the participant's name
     const expenses = await Expense.find({ eventId: req.params.eventId })
@@ -17,7 +18,7 @@ router.get("/event/:eventId", async (req, res) => {
 });
 
 // Create new expense with optional image upload
-router.post("/", upload.single("receipt"), async (req, res) => {
+router.post("/", verifyToken, upload.single("receipt"), canManageEvent, async (req, res) => {
   try {
     const receiptImage = req.file ? `/uploads/${req.file.filename}` : null;
 

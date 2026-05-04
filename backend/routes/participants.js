@@ -1,9 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const Participant = require("../models/Participant");
+const { verifyToken, canManageEvent } = require("../middleware/auth");
 
 // Get participants for an event
-router.get("/event/:eventId", async (req, res) => {
+router.get("/event/:eventId", verifyToken, async (req, res) => {
   try {
     const participants = await Participant.find({ eventId: req.params.eventId });
     res.json(participants);
@@ -13,7 +14,7 @@ router.get("/event/:eventId", async (req, res) => {
 });
 
 // Add new participant
-router.post("/", async (req, res) => {
+router.post("/", verifyToken, canManageEvent, async (req, res) => {
   const { name, phone, eventId } = req.body;
 
   // Validation

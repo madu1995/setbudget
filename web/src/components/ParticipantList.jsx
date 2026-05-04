@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { useBudget } from '../context/BudgetContext';
+import { useAuth } from '../context/AuthContext';
 import AddParticipantModal from './AddParticipantModal';
 
 const Container = styled.div`
@@ -79,6 +80,7 @@ const avatarColors = ['#FF6B6B', '#4D96FF', '#6BCB77', '#FFD93D', '#917FB3', '#F
 
 export default function ParticipantList() {
   const { participants, addParticipant, activeEvent, settlementReport } = useBudget();
+  const { isModerator } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleAddParticipant = async (name, phone) => {
@@ -116,15 +118,20 @@ export default function ParticipantList() {
           );
         })}
       </AttendeeGrid>
-      <AddBtn onClick={() => setIsModalOpen(true)}>
-        <span>+</span> Add Participant
-      </AddBtn>
+      
+      {isModerator(activeEvent) && (
+        <>
+          <AddBtn onClick={() => setIsModalOpen(true)}>
+            <span>+</span> Add Participant
+          </AddBtn>
 
-      <AddParticipantModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        onParticipantAdded={handleAddParticipant} 
-      />
+          <AddParticipantModal 
+            isOpen={isModalOpen} 
+            onClose={() => setIsModalOpen(false)} 
+            onParticipantAdded={handleAddParticipant} 
+          />
+        </>
+      )}
     </Container>
   );
 }

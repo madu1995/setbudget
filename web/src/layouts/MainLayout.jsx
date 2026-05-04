@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import styled, { createGlobalStyle } from 'styled-components';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useBudget } from '../context/BudgetContext';
+import { useAuth } from '../context/AuthContext';
 import AddEventModal from '../components/AddEventModal';
 
 const GlobalStyle = createGlobalStyle`
@@ -203,6 +204,7 @@ const MobileHeader = styled.div`
 
 export default function MainLayout() {
   const { events, activeEvent, selectEvent, fetchEvents } = useBudget();
+  const { isAdmin, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();
@@ -252,7 +254,19 @@ export default function MainLayout() {
           <NavItem to="/events" onClick={() => setSidebarOpen(false)}><span style={{ fontSize: '1.2rem' }}>📅</span> Events</NavItem>
           <NavItem to="/summary" onClick={() => setSidebarOpen(false)}><span style={{ fontSize: '1.2rem' }}>📊</span> Summary</NavItem>
           <NavItem to="/profile" onClick={() => setSidebarOpen(false)}><span style={{ fontSize: '1.2rem' }}>👤</span> Profile</NavItem>
+          {isAdmin && (
+            <NavItem to="/users" onClick={() => setSidebarOpen(false)}><span style={{ fontSize: '1.2rem' }}>👥</span> Users</NavItem>
+          )}
         </SidebarNav>
+
+        <div style={{ marginTop: 'auto', paddingTop: '20px' }}>
+          <button 
+            onClick={() => { logout(); navigate('/login'); }}
+            style={{ width: '100%', padding: '10px', background: 'transparent', border: '1px solid #E0E0E0', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', color: '#DC2626' }}
+          >
+            Log Out
+          </button>
+        </div>
       </Sidebar>
 
       <MainContent>
@@ -267,7 +281,7 @@ export default function MainLayout() {
             <SearchInput placeholder="Search (Events/Activities...)" />
           </SearchContainer>
 
-          {!isEventsPage && (
+          {!isEventsPage && isAdmin && (
             <NewEventBtn onClick={() => setIsModalOpen(true)}>
               <span>+</span> New Event
             </NewEventBtn>

@@ -1,6 +1,7 @@
 import React from 'react';
 import styled from 'styled-components';
 import { useBudget } from '../context/BudgetContext';
+import { useAuth } from '../context/AuthContext';
 import SummaryCard from '../components/SummaryCard';
 import ParticipantList from '../components/ParticipantList';
 import ExpenseForm from '../components/ExpenseForm';
@@ -29,6 +30,7 @@ const SectionTitle = styled.h2`
 
 export default function Home() {
   const { activeEvent, totals } = useBudget();
+  const { isModerator } = useAuth();
 
   if (!activeEvent) {
     return (
@@ -48,10 +50,12 @@ export default function Home() {
         <ParticipantList />
       </div>
       
-      <div>
-        <SectionTitle>Add Expense</SectionTitle>
-        <ExpenseForm mode="add" />
-      </div>
+      {isModerator(activeEvent) && (
+        <div>
+          <SectionTitle>Add Expense</SectionTitle>
+          <ExpenseForm mode="add" />
+        </div>
+      )}
 
       <div>
         <SectionTitle>Recent Expenses</SectionTitle>
