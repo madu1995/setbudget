@@ -50,9 +50,23 @@ export const AuthProvider = ({ children }) => {
 
   const updatePassword = async (newPassword) => {
     const { data } = await axios.post(`${API_URL}/auth/update-password`, { newPassword });
+    // When updating password via forced reset, we get back the full user object with new token
     setUser(data);
     localStorage.setItem('userInfo', JSON.stringify(data));
     axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
+    return data;
+  };
+
+  const updateProfile = async (profileData) => {
+    const { data } = await axios.put(`${API_URL}/auth/profile`, profileData);
+    // Profile update also returns full user data with token
+    setUser(data);
+    localStorage.setItem('userInfo', JSON.stringify(data));
+    return data;
+  };
+
+  const changePassword = async (passwordData) => {
+    const { data } = await axios.put(`${API_URL}/auth/profile/password`, passwordData);
     return data;
   };
 
@@ -64,7 +78,9 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, updatePassword, isAdmin, isModerator }}>
+    <AuthContext.Provider value={{ 
+      user, loading, login, logout, updatePassword, updateProfile, changePassword, isAdmin, isModerator 
+    }}>
       {children}
     </AuthContext.Provider>
   );

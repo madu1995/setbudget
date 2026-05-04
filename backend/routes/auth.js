@@ -45,16 +45,16 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Update password (especially for initial admin login)
-router.post('/update-password', verifyToken, async (req, res) => {
-  const { newPassword } = req.body;
+// Update profile details
+router.put('/profile', verifyToken, async (req, res) => {
+  const { name, phone } = req.body;
 
   try {
     const user = await User.findById(req.user._id);
 
     if (user) {
-      user.password = newPassword;
-      user.requiresPasswordChange = false;
+      user.name = name || user.name;
+      user.phone = phone || user.phone;
       const updatedUser = await user.save();
 
       res.json({
@@ -62,11 +62,55 @@ router.post('/update-password', verifyToken, async (req, res) => {
         name: updatedUser.name,
         username: updatedUser.username,
         role: updatedUser.role,
-        requiresPasswordChange: updatedUser.requiresPasswordChange,
+        phone: updatedUser.phone,
         token: generateToken(updatedUser._id),
       });
     } else {
       res.status(404).json({ message: 'User not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Update password
+router.put('/profile/password', verifyToken, async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+
+  try {
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Only require current password if they don't have a forced change pending
+    if (!user.requiresPasswordChange) {
+      if (!currentPassword || !(await user.matchPassword(currentPassword))) {
+        return res.status(401).json({ message: 'Incorrect current password' });
+      }
+    }
+
+    user.password = newPassword;
+    user.requiresPasswordChange = false;
+    await user.save();
+
+    res.json({ message: 'Password updated successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Deprecated old endpoint but keeping for backward compatibility if needed temporarily
+router.post('/update-password', verifyToken, async (req, res) => {
+  const { newPassword } = req.body;
+  try {
+    const user = await User.findById(req.user._id);
+    if (user) {
+      user.password = newPassword;
+      user.requiresPasswordChange = false;
+      await user.save();
+      res.json({ message: 'Password updated successfully' });
     }
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -82,6 +126,7 @@ router.get('/me', verifyToken, async (req, res) => {
       name: user.name,
       username: user.username,
       role: user.role,
+      phone: user.phone,
       requiresPasswordChange: user.requiresPasswordChange,
     });
   } else {
