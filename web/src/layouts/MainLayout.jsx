@@ -51,6 +51,37 @@ const Overlay = styled.div`
   }
 `;
 
+const UserProfileArea = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+`;
+
+const UserAvatar = styled.div`
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #005682; /* Blue from image */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+`;
+
+const UserName = styled.span`
+  font-weight: 600;
+  color: ${props => props.theme.colors.secondary};
+  font-size: 1.05rem;
+`;
+
+const PersonIcon = () => (
+  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="12" cy="8" r="4" fill="white"/>
+    <path d="M4 20C4 16.6863 6.68629 14 10 14H14C17.3137 14 20 16.6863 20 20" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+  </svg>
+);
+
 const LogoArea = styled.div`
   display: flex;
   align-items: center;
@@ -63,8 +94,8 @@ const LogoArea = styled.div`
 
 const LogoIcon = () => (
   <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M21.21 15.89A10 10 0 1 1 8 2.83" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M22 12A10 10 0 0 0 12 2v10z" fill="currentColor"/>
+    <path d="M21.21 15.89A10 10 0 1 1 8 2.83" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M22 12A10 10 0 0 0 12 2v10z" fill="currentColor" />
   </svg>
 );
 
@@ -169,7 +200,7 @@ const SearchInput = styled.input`
 
 const SearchIcon = () => (
   <svg style={{ position: 'absolute', left: '16px', top: '12px', color: '#9CA3AF' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
   </svg>
 );
 
@@ -204,7 +235,7 @@ const MobileHeader = styled.div`
 
 export default function MainLayout() {
   const { events, activeEvent, selectEvent, fetchEvents, searchQuery, setSearchQuery } = useBudget();
-  const { isAdmin, logout } = useAuth();
+  const { user, isAdmin, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();
@@ -236,11 +267,11 @@ export default function MainLayout() {
           <LogoIcon />
           Set Budget
         </LogoArea>
-        
+
         <div style={{ marginBottom: '30px' }}>
-          <select 
+          <select
             style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #E0E0E0', fontSize: '16px' }}
-            value={activeEvent?._id || ''} 
+            value={activeEvent?._id || ''}
             onChange={(e) => handleSelectEvent(e.target.value)}
           >
             {events.length === 0 && <option value="">No Events</option>}
@@ -261,7 +292,7 @@ export default function MainLayout() {
         </SidebarNav>
 
         <div style={{ marginTop: 'auto', paddingTop: '20px' }}>
-          <button 
+          <button
             onClick={() => { logout(); navigate('/login'); }}
             style={{ width: '100%', padding: '10px', background: 'transparent', border: '1px solid #E0E0E0', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', color: '#DC2626' }}
           >
@@ -276,29 +307,38 @@ export default function MainLayout() {
             <Hamburger onClick={() => setSidebarOpen(true)}>☰</Hamburger>
             <LogoIcon />
           </MobileHeader>
-          
+
+          {!isEventsPage && isAdmin && (
+            <NewEventBtn onClick={() => setIsModalOpen(true)} style={{ marginLeft: '10px' }}>
+              <span>+</span> New Event
+            </NewEventBtn>
+          )}
+
           {showSearch && (
             <SearchContainer>
               <SearchIcon />
-              <SearchInput 
-                placeholder="Search Events..." 
+              <SearchInput
+                placeholder="Search Events..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </SearchContainer>
           )}
 
-          {!isEventsPage && isAdmin && (
-            <NewEventBtn onClick={() => setIsModalOpen(true)}>
-              <span>+</span> New Event
-            </NewEventBtn>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginLeft: 'auto' }}>
+            <UserProfileArea style={{ marginBottom: 0 }}>
+              <UserName>{user?.username || 'User'}</UserName>
+              <UserAvatar>
+                <PersonIcon />
+              </UserAvatar>
+            </UserProfileArea>
+          </div>
         </TopBar>
 
-        <AddEventModal 
-          isOpen={isModalOpen} 
-          onClose={() => setIsModalOpen(false)} 
-          onEventAdded={handleEventAdded} 
+        <AddEventModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onEventAdded={handleEventAdded}
         />
 
         {/* Dynamic Route Content */}
