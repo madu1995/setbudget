@@ -46,6 +46,16 @@ const Name = styled.span`
   font-size: 0.9rem;
   font-weight: 500;
   color: ${props => props.theme.colors.text};
+  flex: 1;
+`;
+
+const BalanceTag = styled.div`
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background-color: ${props => props.status === 'owed' ? '#EBF5FF' : props.status === 'owes' ? '#FEE2E2' : '#F3F4F6'};
+  color: ${props => props.status === 'owed' ? '#007BFF' : props.status === 'owes' ? '#DC2626' : '#6B7280'};
 `;
 
 const AddBtn = styled.button`
@@ -68,7 +78,7 @@ const AddBtn = styled.button`
 const avatarColors = ['#FF6B6B', '#4D96FF', '#6BCB77', '#FFD93D', '#917FB3', '#F29727'];
 
 export default function ParticipantList() {
-  const { participants, addParticipant, activeEvent } = useBudget();
+  const { participants, addParticipant, activeEvent, settlementReport } = useBudget();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleAddParticipant = async (name, phone) => {
@@ -80,14 +90,31 @@ export default function ParticipantList() {
   return (
     <Container>
       <AttendeeGrid>
-        {participants.map((p, idx) => (
-          <AttendeeChip key={p._id}>
-            <Avatar color={avatarColors[idx % avatarColors.length]}>
-              {p.name.charAt(0)}
-            </Avatar>
-            <Name>{p.name}</Name>
-          </AttendeeChip>
-        ))}
+        {participants.map((p, idx) => {
+          // Find balance from settlement report
+          const pReport = settlementReport?.balances?.find(b => b._id === p._id);
+          let balanceTag = null;
+          
+          if (pReport) {
+            if (pReport.balance > 0.01) {
+              balanceTag = <BalanceTag status="owed">+LKR {pReport.balance.toLocaleString(undefined, { maximumFractionDigits: 0 })}</BalanceTag>;
+            } else if (pReport.balance < -0.01) {
+              balanceTag = <BalanceTag status="owes">Owes LKR {Math.abs(pReport.balance).toLocaleString(undefined, { maximumFractionDigits: 0 })}</BalanceTag>;
+            } else {
+              balanceTag = <BalanceTag status="settled">Settled</BalanceTag>;
+            }
+          }
+
+          return (
+            <AttendeeChip key={p._id}>
+              <Avatar color={avatarColors[idx % avatarColors.length]}>
+                {p.name.charAt(0)}
+              </Avatar>
+              <Name>{p.name}</Name>
+              {balanceTag}
+            </AttendeeChip>
+          );
+        })}
       </AttendeeGrid>
       <AddBtn onClick={() => setIsModalOpen(true)}>
         <span>+</span> Add Participant

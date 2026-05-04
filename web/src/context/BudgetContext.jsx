@@ -10,6 +10,7 @@ export const BudgetProvider = ({ children }) => {
   const [activeEvent, setActiveEvent] = useState(null);
   const [participants, setParticipants] = useState([]);
   const [expenses, setExpenses] = useState([]);
+  const [settlementReport, setSettlementReport] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const API_URL = 'http://localhost:5000/api';
@@ -36,6 +37,16 @@ export const BudgetProvider = ({ children }) => {
     if(eventId) {
       fetchParticipants(eventId);
       fetchExpenses(eventId);
+      fetchSettlementReport(eventId);
+    }
+  };
+
+  const fetchSettlementReport = async (eventId) => {
+    try {
+      const res = await axios.get(`${API_URL}/events/${eventId}/settlement-report`);
+      setSettlementReport(res.data);
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -76,6 +87,7 @@ export const BudgetProvider = ({ children }) => {
         eventId: activeEvent._id
       });
       setParticipants([...participants, res.data]);
+      fetchSettlementReport(activeEvent._id);
       return res.data; // Return for component use
     } catch (err) {
       console.error(err);
@@ -90,6 +102,7 @@ export const BudgetProvider = ({ children }) => {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       setExpenses([res.data, ...expenses]);
+      fetchSettlementReport(activeEvent._id);
     } catch (err) {
       console.error(err);
     }
@@ -125,6 +138,8 @@ export const BudgetProvider = ({ children }) => {
       addExpense,
       closeEvent,
       fetchEvents, // Added to refresh events after modal addition
+      fetchSettlementReport,
+      settlementReport,
       totals,
       loading
     }}>

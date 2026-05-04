@@ -126,4 +126,74 @@ router.patch("/:id/close", async (req, res) => {
   }
 });
 
+const Participant = require("../models/Participant");
+const Expense = require("../models/Expense");
+
+// Settlement Report
+router.get("/:id/settlement-report", async (req, res) => {
+  try {
+    const eventId = req.params.id;
+    const participants = await Participant.find({ eventId });
+    const expenses = await Expense.find({ eventId });
+
+    const totalSpent = expenses.reduce((acc, curr) => acc + curr.amount, 0);
+    const participantCount = participants.length;
+    const share = participantCount > 0 ? totalSpent / participantCount : 0;
+
+    const participantBalances = participants.map(p => {
+      const paid = expenses
+        .filter(e => e.paidBy.toString() === p._id.toString())
+        .reduce((acc, curr) => acc + curr.amount, 0);
+      return {
+        _id: p._id,
+        name: p.name,
+        totalPaid: paid,
+        share: share,
+        balance: paid - share
+      };
+    });
+
+    // Calculate settlements (debt simplification)
+    let debtors = participantBalances.filter(p => p.balance <= -0.01).map(p => ({ ...p, owe: Math.abs(p.balance) }));
+    let creditors = participantBalances.filter(p => p.balance >= 0.01).map(p => ({ ...p, owed: p.balance }));
+
+    debtors.sort((a, b) => b.owe - a.owe);
+    creditors.sort((a, b) => b.owed - a.owed);
+
+    const transactions = [];
+    let i = 0; // debtors index
+    let j = 0; // creditors index
+
+    while (i < debtors.length && j < creditors.length) {
+      const debtor = debtors[i];
+      const creditor = creditors[j];
+      const amount = Math.min(debtor.owe, creditor.owed);
+
+      if (amount >= 0.01) {
+        transactions.push({
+          from: debtor.name,
+          to: creditor.name,
+          amount: amount
+        });
+      }
+
+      debtor.owe -= amount;
+      creditor.owed -= amount;
+
+      if (debtor.owe < 0.01) i++;
+      if (creditor.owed < 0.01) j++;
+    }
+
+    res.json({
+      totalSpent,
+      participantCount,
+      share,
+      balances: participantBalances,
+      transactions
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router;
