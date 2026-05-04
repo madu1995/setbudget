@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 
 const PageContainer = styled.div`
   padding: 40px;
@@ -86,6 +87,7 @@ const Table = styled.table`
 const API_URL = 'http://localhost:5000/api';
 
 export default function UserManagement() {
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState([]);
   const [formData, setFormData] = useState({
     name: '',
@@ -128,6 +130,18 @@ export default function UserManagement() {
     }
   };
 
+  const handleDeleteUser = async (id) => {
+    if (window.confirm('Are you sure you want to delete this user?')) {
+      try {
+        await axios.delete(`${API_URL}/users/${id}`);
+        setSuccess('User deleted successfully');
+        fetchUsers();
+      } catch (err) {
+        setError(err.response?.data?.message || 'Failed to delete user');
+      }
+    }
+  };
+
   return (
     <PageContainer>
       <Title>User Management</Title>
@@ -159,6 +173,7 @@ export default function UserManagement() {
                 <th>Username</th>
                 <th>Phone</th>
                 <th>Role</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -175,6 +190,24 @@ export default function UserManagement() {
                     color: u.role === 'admin' ? '#DC2626' : '#007BFF',
                     fontWeight: 'bold'
                   }}>{u.role.toUpperCase()}</span></td>
+                  <td>
+                    {u._id !== currentUser?._id && (
+                      <button 
+                        onClick={() => handleDeleteUser(u._id)}
+                        style={{
+                          backgroundColor: 'transparent',
+                          color: '#DC2626',
+                          border: '1px solid #DC2626',
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontSize: '0.8rem'
+                        }}
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
