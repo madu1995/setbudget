@@ -69,8 +69,37 @@ const ViewBtn = styled.button`
   }
 `;
 
+const ActionContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: absolute;
+  right: 24px;
+  top: 55px;
+`;
+
+const ActionBtn = styled.button`
+  background: white;
+  border: 2px solid ${props => props.color};
+  color: ${props => props.color};
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.2rem;
+  transition: all 0.2s;
+
+  &:hover {
+    background: ${props => props.color};
+    color: white;
+  }
+`;
+
 export default function Events() {
-  const { events, selectEvent, fetchEvents, searchQuery } = useBudget();
+  const { events, selectEvent, fetchEvents, searchQuery, deleteEvent } = useBudget();
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -83,6 +112,13 @@ export default function Events() {
 
   const handleEventAdded = (newEvent) => {
       fetchEvents(); // Refresh the list
+  };
+
+  const handleDelete = async (id, name) => {
+    if (window.confirm(`Are you sure you want to delete "${name}"? This will remove all associated participants and expenses.`)) {
+      await deleteEvent(id);
+      fetchEvents();
+    }
   };
 
   const filteredEvents = events.filter(e => 
@@ -126,12 +162,19 @@ export default function Events() {
       ) : (
         <Grid>
             {filteredEvents.map((e) => (
-                <EventCard key={e._id}>
+                <EventCard key={e._id} style={{ position: 'relative' }}>
                     <EventName>
                         {e.name}
                         <StatusTag active={e.isActive}>{e.isActive ? 'Active' : 'Archived'}</StatusTag>
                     </EventName>
                     
+                    {isAdmin && (
+                      <ActionContainer>
+                        <ActionBtn color="#007BFF" title="Edit Event" onClick={() => {/* TODO: Implement edit */}}>✎</ActionBtn>
+                        <ActionBtn color="#DC2626" title="Delete Event" onClick={() => handleDelete(e._id, e.name)}>🗑</ActionBtn>
+                      </ActionContainer>
+                    )}
+
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '15px' }}>
                       {e.startDate && (
                         <div style={{ color: '#6B7280', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '5px' }}>

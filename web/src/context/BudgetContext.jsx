@@ -127,6 +127,31 @@ export const BudgetProvider = ({ children }) => {
     participantCount: participants.length
   };
 
+  const deleteEvent = async (id) => {
+    try {
+      await axios.delete(`${API_URL}/events/${id}`);
+      setEvents(events.filter(e => e._id !== id));
+      if (activeEvent && activeEvent._id === id) {
+        setActiveEvent(null);
+        // Optionally select the first remaining event
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const updateEvent = async (id, eventData) => {
+    try {
+      const res = await axios.put(`${API_URL}/events/${id}`, eventData);
+      setEvents(events.map(e => e._id === id ? res.data : e));
+      if (activeEvent && activeEvent._id === id) {
+        setActiveEvent(res.data);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   return (
     <BudgetContext.Provider value={{
       events,
@@ -135,10 +160,12 @@ export const BudgetProvider = ({ children }) => {
       participants,
       expenses,
       addEvent,
+      deleteEvent,
+      updateEvent,
       addParticipant,
       addExpense,
       closeEvent,
-      fetchEvents, // Added to refresh events after modal addition
+      fetchEvents, 
       fetchSettlementReport,
       settlementReport,
       totals,

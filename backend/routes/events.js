@@ -247,4 +247,29 @@ router.get("/:id/settlement-report", verifyToken, async (req, res) => {
   }
 });
 
+// Update event
+router.put("/:id", verifyToken, isAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updatedEvent = await Event.findByIdAndUpdate(id, req.body, { new: true });
+    res.json(updatedEvent);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+// Delete event
+router.delete("/:id", verifyToken, isAdmin, async (req, res) => {
+  try {
+    const eventId = req.params.id;
+    await Event.findByIdAndDelete(eventId);
+    // Also delete associated participants and expenses
+    await Participant.deleteMany({ eventId });
+    await Expense.deleteMany({ eventId });
+    res.json({ message: "Event deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router;
