@@ -71,14 +71,20 @@ const BalanceTd = styled(Td)`
 
 export default function SummaryCard() {
   const { activeEvent, totals, settlementReport } = useBudget();
+  const [showTable, setShowTable] = React.useState(false);
 
   if (!activeEvent) return null;
 
   return (
     <BlueCard>
-      <CardHeader>
+      <CardHeader 
+        onClick={() => setShowTable(!showTable)} 
+        style={{ cursor: 'pointer', userSelect: 'none' }}
+      >
         {activeEvent.name} 🌿
-        <span style={{ fontSize: '0.8rem' }}>▼</span>
+        <span style={{ fontSize: '0.8rem', transition: 'transform 0.3s', transform: showTable ? 'rotate(180deg)' : 'rotate(0)' }}>
+          ▼
+        </span>
       </CardHeader>
       <StatsList>
         <StatItem>Total Budget: LKR {totals.budget.toLocaleString(undefined, { minimumFractionDigits: 2 })}</StatItem>
@@ -86,7 +92,7 @@ export default function SummaryCard() {
         <StatItem>Participants: {totals.participantCount}</StatItem>
       </StatsList>
 
-      {settlementReport && settlementReport.balances && settlementReport.balances.length > 0 && (
+      {showTable && settlementReport && settlementReport.balances && settlementReport.balances.length > 0 && (
         <TableContainer>
           <Table>
             <thead>

@@ -73,6 +73,7 @@ const DetailsWrapper = styled.div`
   display: flex;
   flex-direction: column;
   flex: 1;
+  gap: 4px;
 `;
 
 const EditBtn = styled.button`
@@ -158,17 +159,14 @@ export default function ParticipantList() {
               </Avatar>
               <DetailsWrapper>
                 <Name>{p.name}</Name>
-                <ModeTag isFixed={p.paymentMode === 'Fixed Amount'}>
-                  {p.paymentMode === 'Fixed Amount' ? `LKR ${p.fixedAmount}` : 'Full'}
-                </ModeTag>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  {balanceTag}
+                </div>
               </DetailsWrapper>
               
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                {balanceTag}
-                {isModerator(activeEvent) && (
-                  <EditBtn onClick={() => handleEditClick(p)}>✎</EditBtn>
-                )}
-              </div>
+              {isModerator(activeEvent) && (
+                <EditBtn onClick={() => handleEditClick(p)}>✎</EditBtn>
+              )}
             </AttendeeChip>
           );
         })}

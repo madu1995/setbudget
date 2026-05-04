@@ -289,6 +289,7 @@ export default function MainLayout() {
           {isAdmin && (
             <NavItem to="/users" onClick={() => setSidebarOpen(false)}><span style={{ fontSize: '1.2rem' }}>👥</span> Users</NavItem>
           )}
+          <NavItem to="/about" onClick={() => setSidebarOpen(false)}><span style={{ fontSize: '1.2rem' }}>ℹ️</span> About</NavItem>
         </SidebarNav>
 
         <div style={{ marginTop: 'auto', paddingTop: '20px' }}>

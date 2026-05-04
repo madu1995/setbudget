@@ -11,6 +11,7 @@ import Home from './pages/Home';
 import Events from './pages/Events';
 import Summary from './pages/Summary';
 import Profile from './pages/Profile';
+import About from './pages/About';
 import Login from './pages/Login';
 import UserManagement from './pages/UserManagement';
 
@@ -46,6 +47,7 @@ export default function App() {
                 <Route path="events" element={<Events />} />
                 <Route path="summary" element={<Summary />} />
                 <Route path="profile" element={<Profile />} />
+                <Route path="about" element={<About />} />
                 <Route path="users" element={<AdminGuard><UserManagement /></AdminGuard>} />
               </Route>
             </Routes>
