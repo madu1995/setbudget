@@ -103,6 +103,7 @@ export default function Events() {
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [eventToEdit, setEventToEdit] = useState(null);
   const [manageModEventId, setManageModEventId] = useState(null);
 
   const handleManage = (id) => {
@@ -110,8 +111,14 @@ export default function Events() {
       navigate('/');
   };
 
-  const handleEventAdded = (newEvent) => {
+  const handleEdit = (event) => {
+    setEventToEdit(event);
+    setIsModalOpen(true);
+  };
+
+  const handleEventSaved = (savedEvent) => {
       fetchEvents(); // Refresh the list
+      setEventToEdit(null);
   };
 
   const handleDelete = async (id, name) => {
@@ -145,8 +152,9 @@ export default function Events() {
 
       <AddEventModal 
         isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        onEventAdded={handleEventAdded} 
+        onClose={() => { setIsModalOpen(false); setEventToEdit(null); }} 
+        onEventAdded={handleEventSaved} 
+        eventToEdit={eventToEdit}
       />
 
       <ManageModeratorsModal 
@@ -170,7 +178,7 @@ export default function Events() {
                     
                     {isAdmin && (
                       <ActionContainer>
-                        <ActionBtn color="#007BFF" title="Edit Event" onClick={() => {/* TODO: Implement edit */}}>✎</ActionBtn>
+                        <ActionBtn color="#007BFF" title="Edit Event" onClick={() => handleEdit(e)}>✎</ActionBtn>
                         <ActionBtn color="#DC2626" title="Delete Event" onClick={() => handleDelete(e._id, e.name)}>🗑</ActionBtn>
                       </ActionContainer>
                     )}

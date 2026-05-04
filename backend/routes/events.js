@@ -85,7 +85,11 @@ router.post("/add", verifyToken, isAdmin, upload.single('coverImage'), async (re
 
     let participantsArray = [];
     if (initialParticipants) {
-      participantsArray = initialParticipants.split(',').map(email => email.trim()).filter(email => email);
+      try {
+        participantsArray = JSON.parse(initialParticipants);
+      } catch (e) {
+        console.error("Failed to parse initialParticipants:", e);
+      }
     }
 
     const event = new Event({
@@ -105,6 +109,16 @@ router.post("/add", verifyToken, isAdmin, upload.single('coverImage'), async (re
     });
 
     const newEvent = await event.save();
+
+    // Also create Participant records for each
+    if (participantsArray.length > 0) {
+      const participantDocs = participantsArray.map(p => ({
+        name: p.name,
+        phone: p.phone,
+        eventId: newEvent._id
+      }));
+      await Participant.insertMany(participantDocs);
+    }
 
     res.status(201).json({ event: newEvent });
   } catch (err) {
@@ -189,19 +203,38 @@ router.get("/:id/settlement-report", verifyToken, async (req, res) => {
     const expenses = await Expense.find({ eventId });
 
     const totalSpent = expenses.reduce((acc, curr) => acc + curr.amount, 0);
-    const participantCount = participants.length;
-    const share = participantCount > 0 ? totalSpent / participantCount : 0;
+
+    // Mixed Splitting Logic
+    let totalFixed = 0;
+    let fullPayerCount = 0;
+
+    participants.forEach(p => {
+      if (p.paymentMode === 'Fixed Amount') {
+        totalFixed += (p.fixedAmount || 0);
+      } else {
+        fullPayerCount++;
+      }
+    });
+
+    const remainingBalance = totalSpent - totalFixed;
+    const share = fullPayerCount > 0 ? remainingBalance / fullPayerCount : 0;
 
     const participantBalances = participants.map(p => {
       const paid = expenses
         .filter(e => e.paidBy.toString() === p._id.toString())
         .reduce((acc, curr) => acc + curr.amount, 0);
+      
+      const assignedShare = p.paymentMode === 'Fixed Amount' ? (p.fixedAmount || 0) : share;
+      const balance = paid - assignedShare;
+
       return {
         _id: p._id,
         name: p.name,
+        paymentMode: p.paymentMode || 'Full Share',
+        fixedAmount: p.fixedAmount || 0,
         totalPaid: paid,
-        share: share,
-        balance: paid - share
+        share: assignedShare, // What they are supposed to pay
+        balance: balance // Positive means owed to them, negative means they owe
       };
     });
 
@@ -237,7 +270,7 @@ router.get("/:id/settlement-report", verifyToken, async (req, res) => {
 
     res.json({
       totalSpent,
-      participantCount,
+      participantCount: participants.length,
       share,
       balances: participantBalances,
       transactions
@@ -248,10 +281,65 @@ router.get("/:id/settlement-report", verifyToken, async (req, res) => {
 });
 
 // Update event
-router.put("/:id", verifyToken, isAdmin, async (req, res) => {
+router.put("/:id", verifyToken, isAdmin, upload.single('coverImage'), async (req, res) => {
   try {
     const { id } = req.params;
-    const updatedEvent = await Event.findByIdAndUpdate(id, req.body, { new: true });
+    const {
+      eventName,
+      category,
+      mode,
+      startDate,
+      endDate,
+      estimatedBudget,
+      splitMethod,
+      location,
+      description,
+      initialParticipants
+    } = req.body;
+
+    let participantsArray = [];
+    if (initialParticipants) {
+      try {
+        participantsArray = JSON.parse(initialParticipants);
+      } catch (e) {
+        console.error("Failed to parse initialParticipants:", e);
+      }
+    }
+
+    const updateData = {
+      name: eventName,
+      category: category || 'Uncategorized',
+      mode: mode || 'quick',
+      startDate: startDate ? new Date(startDate) : undefined,
+      endDate: endDate ? new Date(endDate) : undefined,
+      totalBudget: estimatedBudget ? parseFloat(estimatedBudget) : 0,
+      splitMethod: splitMethod || 'Equal Split',
+      location,
+      description,
+      participantsList: participantsArray
+    };
+
+    if (req.file) {
+      updateData.coverImage = req.file.path;
+    }
+
+    const updatedEvent = await Event.findByIdAndUpdate(id, updateData, { new: true });
+
+    // Sync Participant records
+    if (initialParticipants) {
+      // For simplicity, we'll remove existing and re-add if this is considered the "authoritative" list
+      // In a real app, you'd want to be more careful.
+      await Participant.deleteMany({ eventId: id });
+      if (participantsArray.length > 0) {
+        const participantDocs = participantsArray.map(p => ({
+          name: p.name,
+          phone: p.phone,
+          eventId: id
+        }));
+        await Participant.insertMany(participantDocs);
+      }
+    }
+
     res.json(updatedEvent);
   } catch (err) {
     res.status(400).json({ message: err.message });

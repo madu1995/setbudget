@@ -144,7 +144,7 @@ export default function Summary() {
       doc.text(`Per-Person Share: LKR ${settlementReport.share.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, 14, yPos + 12);
 
       // Balances Table
-      const tableColumn = ["Participant", "Total Paid", "Share", "Balance"];
+      const tableColumn = ["Participant", "Mode", "Total Paid", "Share", "Balance"];
       const tableRows = [];
 
       if (settlementReport.balances) {
@@ -155,6 +155,7 @@ export default function Summary() {
           
           const rowData = [
             b.name,
+            b.paymentMode === 'Fixed Amount' ? `Fixed (LKR ${b.fixedAmount})` : 'Full',
             `LKR ${b.totalPaid.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
             `LKR ${b.share.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
             balanceText
@@ -243,10 +244,49 @@ export default function Summary() {
                 <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>LKR {settlementReport.totalSpent.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
               </div>
               <div>
-                <div style={{ fontSize: '0.9rem', color: '#6B7280', marginBottom: '5px' }}>Per-Person Share</div>
+                <div style={{ fontSize: '0.9rem', color: '#6B7280', marginBottom: '5px' }}>Standard Share (Full)</div>
                 <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>LKR {settlementReport.share.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
               </div>
             </div>
+          </Card>
+          
+          <SectionTitle>Participant Breakdown</SectionTitle>
+          <Card style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid #E0E0E0' }}>
+                  <th style={{ padding: '12px' }}>Name</th>
+                  <th style={{ padding: '12px' }}>Mode</th>
+                  <th style={{ padding: '12px' }}>Paid</th>
+                  <th style={{ padding: '12px' }}>Assigned Share</th>
+                  <th style={{ padding: '12px' }}>Balance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {settlementReport.balances.map(b => (
+                  <tr key={b._id} style={{ borderBottom: '1px solid #F0F0F0' }}>
+                    <td style={{ padding: '12px', fontWeight: '500' }}>{b.name}</td>
+                    <td style={{ padding: '12px' }}>
+                      <span style={{ 
+                        fontSize: '0.75rem', 
+                        padding: '2px 8px', 
+                        borderRadius: '12px',
+                        backgroundColor: b.paymentMode === 'Fixed Amount' ? '#FFF3CD' : '#E2E3E5',
+                        color: b.paymentMode === 'Fixed Amount' ? '#856404' : '#383D41',
+                        fontWeight: 'bold'
+                      }}>
+                        {b.paymentMode === 'Fixed Amount' ? 'Fixed' : 'Full'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px' }}>LKR {b.totalPaid.toLocaleString()}</td>
+                    <td style={{ padding: '12px' }}>LKR {b.share.toLocaleString()}</td>
+                    <td style={{ padding: '12px', fontWeight: 'bold', color: b.balance >= 0 ? '#007BFF' : '#DC2626' }}>
+                      {b.balance >= 0 ? `+LKR ${b.balance.toLocaleString()}` : `-LKR ${Math.abs(b.balance).toLocaleString()}`}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </Card>
 
           <SectionTitle>How to Settle 🤝</SectionTitle>

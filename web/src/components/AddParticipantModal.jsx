@@ -1,13 +1,37 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { useBudget } from '../context/BudgetContext';
 
-const AddParticipantModal = ({ isOpen, onClose, onParticipantAdded }) => {
+const AddParticipantModal = ({ isOpen, onClose, onParticipantAdded, onParticipantUpdated, participantToEdit }) => {
+  const { isModerator } = useAuth();
+  const { activeEvent } = useBudget();
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
+    paymentMode: 'Full Share',
+    fixedAmount: '',
   });
   
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (participantToEdit && isOpen) {
+      setFormData({
+        name: participantToEdit.name || '',
+        phone: participantToEdit.phone || '',
+        paymentMode: participantToEdit.paymentMode || 'Full Share',
+        fixedAmount: participantToEdit.fixedAmount || '',
+      });
+    } else if (isOpen) {
+      setFormData({
+        name: '',
+        phone: '',
+        paymentMode: 'Full Share',
+        fixedAmount: '',
+      });
+    }
+  }, [participantToEdit, isOpen]);
 
   if (!isOpen) return null;
 
@@ -39,11 +63,19 @@ const AddParticipantModal = ({ isOpen, onClose, onParticipantAdded }) => {
     setIsSubmitting(true);
 
     try {
-      await onParticipantAdded(formData.name, formData.phone);
-      setFormData({ name: '', phone: '' });
+      if (participantToEdit) {
+        await onParticipantUpdated(participantToEdit._id, {
+          name: formData.name,
+          phone: formData.phone,
+          paymentMode: formData.paymentMode,
+          fixedAmount: formData.fixedAmount
+        });
+      } else {
+        await onParticipantAdded(formData.name, formData.phone, formData.paymentMode, formData.fixedAmount);
+      }
       onClose();
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to add participant');
+      setError(err.response?.data?.message || `Failed to ${participantToEdit ? 'update' : 'add'} participant`);
     } finally {
       setIsSubmitting(false);
     }
@@ -82,7 +114,7 @@ const AddParticipantModal = ({ isOpen, onClose, onParticipantAdded }) => {
     <div style={modalOverlayStyle}>
       <div style={modalContentStyle}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h3 style={{ margin: 0 }}>Add New Participant</h3>
+          <h3 style={{ margin: 0 }}>{participantToEdit ? 'Edit Participant' : 'Add New Participant'}</h3>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#999', cursor: 'pointer', fontSize: '1.5rem' }}>&times;</button>
         </div>
 
@@ -95,8 +127,25 @@ const AddParticipantModal = ({ isOpen, onClose, onParticipantAdded }) => {
           <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: '600', color: '#495057' }}>Phone Number (Optional)</label>
           <input type="text" name="phone" value={formData.phone} onChange={handleChange} style={inputStyle} placeholder="07XXXXXXXX" />
 
+          {isModerator(activeEvent) && (
+            <>
+              <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: '600', color: '#495057' }}>Payment Mode</label>
+              <select name="paymentMode" value={formData.paymentMode} onChange={handleChange} style={inputStyle}>
+                <option value="Full Share">Full Share</option>
+                <option value="Fixed Amount">Fixed Amount</option>
+              </select>
+
+              {formData.paymentMode === 'Fixed Amount' && (
+                <>
+                  <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: '600', color: '#495057' }}>Fixed Amount (LKR)</label>
+                  <input type="number" name="fixedAmount" value={formData.fixedAmount} onChange={handleChange} style={inputStyle} placeholder="e.g. 1500" min="0" />
+                </>
+              )}
+            </>
+          )}
+
           <button type="submit" disabled={isSubmitting} style={buttonStyle}>
-            {isSubmitting ? 'Adding...' : 'Add Participant'}
+            {isSubmitting ? 'Saving...' : (participantToEdit ? 'Save Changes' : 'Add Participant')}
           </button>
           
           <button type="button" onClick={onClose} style={{ ...buttonStyle, backgroundColor: 'transparent', color: '#6c757d', marginTop: '5px' }}>

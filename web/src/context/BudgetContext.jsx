@@ -79,12 +79,14 @@ export const BudgetProvider = ({ children }) => {
     }
   };
 
-  const addParticipant = async (name, phone) => {
+  const addParticipant = async (name, phone, paymentMode = 'Full Share', fixedAmount = 0) => {
     if (!activeEvent) return;
     try {
       const res = await axios.post(`${API_URL}/participants`, {
         name,
         phone,
+        paymentMode,
+        fixedAmount,
         eventId: activeEvent._id
       });
       setParticipants([...participants, res.data]);
@@ -93,6 +95,19 @@ export const BudgetProvider = ({ children }) => {
     } catch (err) {
       console.error(err);
       throw err; // Throw for component to handle errors
+    }
+  };
+
+  const updateParticipant = async (id, updateData) => {
+    if (!activeEvent) return;
+    try {
+      const res = await axios.put(`${API_URL}/participants/${id}/event/${activeEvent._id}`, updateData);
+      setParticipants(participants.map(p => p._id === id ? res.data : p));
+      fetchSettlementReport(activeEvent._id);
+      return res.data;
+    } catch (err) {
+      console.error(err);
+      throw err;
     }
   };
 
@@ -163,6 +178,7 @@ export const BudgetProvider = ({ children }) => {
       deleteEvent,
       updateEvent,
       addParticipant,
+      updateParticipant,
       addExpense,
       closeEvent,
       fetchEvents, 

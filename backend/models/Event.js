@@ -13,7 +13,7 @@ const eventSchema = new mongoose.Schema({
   splitMethod: { type: String, default: "Equal Split" },
   location: { type: String },
   coverImage: { type: String },
-  participantsList: [{ type: String }], // Store emails or names of initial participants
+  participantsList: [{ name: String, phone: String }], 
   moderators: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
 });
 

@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-const AddEventModal = ({ isOpen, onClose, onEventAdded }) => {
+const AddEventModal = ({ isOpen, onClose, onEventAdded, eventToEdit = null }) => {
   const [isDetailedMode, setIsDetailedMode] = useState(false);
   const [formData, setFormData] = useState({
     eventName: '',
@@ -13,11 +13,46 @@ const AddEventModal = ({ isOpen, onClose, onEventAdded }) => {
     location: '',
     description: '',
     coverImage: null,
-    initialParticipants: '',
+    initialParticipants: [{ name: '', phone: '' }],
   });
   
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (eventToEdit && isOpen) {
+      setIsDetailedMode(eventToEdit.mode === 'detailed');
+      setFormData({
+        eventName: eventToEdit.name || '',
+        category: eventToEdit.category || '',
+        startDate: eventToEdit.startDate ? new Date(eventToEdit.startDate).toISOString().split('T')[0] : '',
+        endDate: eventToEdit.endDate ? new Date(eventToEdit.endDate).toISOString().split('T')[0] : '',
+        estimatedBudget: eventToEdit.totalBudget || '',
+        splitMethod: eventToEdit.splitMethod || 'Equal Split',
+        location: eventToEdit.location || '',
+        description: eventToEdit.description || '',
+        coverImage: null,
+        initialParticipants: eventToEdit.participantsList && eventToEdit.participantsList.length > 0 
+          ? eventToEdit.participantsList.map(p => ({ name: p.name || '', phone: p.phone || '' }))
+          : [{ name: '', phone: '' }],
+      });
+    } else if (isOpen) {
+      // Reset form for "Add New" mode
+      setFormData({
+        eventName: '',
+        category: '',
+        startDate: '',
+        endDate: '',
+        estimatedBudget: '',
+        splitMethod: 'Equal Split',
+        location: '',
+        description: '',
+        coverImage: null,
+        initialParticipants: [{ name: '', phone: '' }],
+      });
+      setIsDetailedMode(false);
+    }
+  }, [eventToEdit, isOpen]);
 
   if (!isOpen) return null;
 
@@ -32,6 +67,24 @@ const AddEventModal = ({ isOpen, onClose, onEventAdded }) => {
     if (name === 'eventName' && value.trim() !== '') {
       setError('');
     }
+  };
+
+  const handleParticipantChange = (index, field, value) => {
+    const updatedParticipants = [...formData.initialParticipants];
+    updatedParticipants[index][field] = value;
+    setFormData({ ...formData, initialParticipants: updatedParticipants });
+  };
+
+  const addParticipantField = () => {
+    setFormData({
+      ...formData,
+      initialParticipants: [...formData.initialParticipants, { name: '', phone: '' }]
+    });
+  };
+
+  const removeParticipantField = (index) => {
+    const updatedParticipants = formData.initialParticipants.filter((_, i) => i !== index);
+    setFormData({ ...formData, initialParticipants: updatedParticipants });
   };
 
   const handleSubmit = async (e) => {
@@ -58,23 +111,37 @@ const AddEventModal = ({ isOpen, onClose, onEventAdded }) => {
         data.append('splitMethod', formData.splitMethod);
         data.append('location', formData.location);
         data.append('description', formData.description);
-        data.append('initialParticipants', formData.initialParticipants);
+        
+        // Filter out empty participants
+        const validParticipants = formData.initialParticipants.filter(p => p.name.trim() !== '');
+        data.append('initialParticipants', JSON.stringify(validParticipants));
+        
         if (formData.coverImage) {
           data.append('coverImage', formData.coverImage);
         }
       }
 
-      const response = await axios.post('http://localhost:5000/api/events/add', data);
+      const url = eventToEdit 
+        ? `http://localhost:5000/api/events/${eventToEdit._id}`
+        : 'http://localhost:5000/api/events/add';
+      
+      const method = eventToEdit ? 'put' : 'post';
+      const response = await axios({
+        method,
+        url,
+        data,
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
 
       if (response.status === 201 || response.status === 200) {
-        onEventAdded(response.data.event);
+        onEventAdded(eventToEdit ? response.data : response.data.event);
         onClose(); 
       } else {
-        setError('Failed to add event');
+        setError(`Failed to ${eventToEdit ? 'update' : 'add'} event`);
       }
     } catch (err) {
       console.error('Error submitting form:', err);
-      setError(err.response?.data?.message || err.response?.data?.error || 'An error occurred while adding the event.');
+      setError(err.response?.data?.message || err.response?.data?.error || `An error occurred while ${eventToEdit ? 'updating' : 'adding'} the event.`);
     } finally {
       setIsSubmitting(false);
     }
@@ -115,7 +182,7 @@ const AddEventModal = ({ isOpen, onClose, onEventAdded }) => {
     <div style={modalOverlayStyle}>
       <div style={modalContentStyle}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2 style={{ margin: 0 }}>Add New Event</h2>
+          <h2 style={{ margin: 0 }}>{eventToEdit ? 'Edit Event' : 'Add New Event'}</h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', fontSize: '1.5rem' }}>&times;</button>
         </div>
 
@@ -183,8 +250,41 @@ const AddEventModal = ({ isOpen, onClose, onEventAdded }) => {
               <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '4px' }}>Cover Image</label>
               <input type="file" name="coverImage" accept="image/*" onChange={handleChange} style={{ ...inputStyle, padding: '8px' }} />
 
-              <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '4px' }}>Initial Participants (comma separated emails)</label>
-              <input type="text" name="initialParticipants" value={formData.initialParticipants} onChange={handleChange} style={inputStyle} placeholder="john@example.com, jane@example.com" />
+              <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '8px', marginTop: '10px' }}>Participants</label>
+              {formData.initialParticipants.map((p, index) => (
+                <div key={index} style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                  <input 
+                    type="text" 
+                    placeholder="Name" 
+                    value={p.name} 
+                    onChange={(e) => handleParticipantChange(index, 'name', e.target.value)} 
+                    style={{ ...inputStyle, marginBottom: 0, flex: 2 }} 
+                  />
+                  <input 
+                    type="text" 
+                    placeholder="Phone" 
+                    value={p.phone} 
+                    onChange={(e) => handleParticipantChange(index, 'phone', e.target.value)} 
+                    style={{ ...inputStyle, marginBottom: 0, flex: 2 }} 
+                  />
+                  {formData.initialParticipants.length > 1 && (
+                    <button 
+                      type="button" 
+                      onClick={() => removeParticipantField(index)} 
+                      style={{ background: '#DC2626', color: 'white', border: 'none', borderRadius: '6px', padding: '0 12px', cursor: 'pointer' }}
+                    >
+                      &times;
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button 
+                type="button" 
+                onClick={addParticipantField} 
+                style={{ background: 'transparent', color: '#007BFF', border: '1px dashed #007BFF', borderRadius: '6px', padding: '8px', cursor: 'pointer', width: '100%', fontSize: '0.85rem', marginBottom: '15px' }}
+              >
+                + Add Participant
+              </button>
             </>
           )}
 

@@ -15,7 +15,7 @@ router.get("/event/:eventId", verifyToken, async (req, res) => {
 
 // Add new participant
 router.post("/", verifyToken, canManageEvent, async (req, res) => {
-  const { name, phone, eventId } = req.body;
+  const { name, phone, eventId, paymentMode, fixedAmount } = req.body;
 
   // Validation
   if (!name) {
@@ -37,11 +37,36 @@ router.post("/", verifyToken, canManageEvent, async (req, res) => {
     name,
     phone,
     eventId,
+    paymentMode: paymentMode || "Full Share",
+    fixedAmount: fixedAmount ? parseFloat(fixedAmount) : 0,
   });
 
   try {
     const newParticipant = await participant.save();
     res.status(201).json(newParticipant);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+// Update participant
+router.put("/:id/event/:eventId", verifyToken, canManageEvent, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, phone, paymentMode, fixedAmount } = req.body;
+
+    const updateData = {};
+    if (name) updateData.name = name;
+    if (phone !== undefined) updateData.phone = phone;
+    if (paymentMode) updateData.paymentMode = paymentMode;
+    if (fixedAmount !== undefined) updateData.fixedAmount = parseFloat(fixedAmount);
+
+    const updatedParticipant = await Participant.findByIdAndUpdate(id, updateData, { new: true });
+    if (!updatedParticipant) {
+      return res.status(404).json({ message: "Participant not found" });
+    }
+    
+    res.json(updatedParticipant);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }

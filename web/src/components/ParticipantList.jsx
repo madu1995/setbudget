@@ -59,6 +59,40 @@ const BalanceTag = styled.div`
   color: ${props => props.status === 'owed' ? '#007BFF' : props.status === 'owes' ? '#DC2626' : '#6B7280'};
 `;
 
+const ModeTag = styled.div`
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background-color: ${props => props.isFixed ? '#FFF3CD' : '#E2E3E5'};
+  color: ${props => props.isFixed ? '#856404' : '#383D41'};
+  margin-top: 4px;
+`;
+
+const DetailsWrapper = styled.div`
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+`;
+
+const EditBtn = styled.button`
+  background: transparent;
+  border: none;
+  color: #6B7280;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background: #F3F4F6;
+    color: #111827;
+  }
+`;
+
 const AddBtn = styled.button`
   background-color: transparent;
   border: 1px solid ${props => props.theme.colors.primary};
@@ -79,12 +113,22 @@ const AddBtn = styled.button`
 const avatarColors = ['#FF6B6B', '#4D96FF', '#6BCB77', '#FFD93D', '#917FB3', '#F29727'];
 
 export default function ParticipantList() {
-  const { participants, addParticipant, activeEvent, settlementReport } = useBudget();
+  const { participants, addParticipant, updateParticipant, activeEvent, settlementReport } = useBudget();
   const { isModerator } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [participantToEdit, setParticipantToEdit] = useState(null);
 
-  const handleAddParticipant = async (name, phone) => {
-    await addParticipant(name, phone);
+  const handleAddParticipant = async (name, phone, paymentMode, fixedAmount) => {
+    await addParticipant(name, phone, paymentMode, fixedAmount);
+  };
+
+  const handleUpdateParticipant = async (id, data) => {
+    await updateParticipant(id, data);
+  };
+
+  const handleEditClick = (p) => {
+    setParticipantToEdit(p);
+    setIsModalOpen(true);
   };
 
   if (!activeEvent) return null;
@@ -112,8 +156,19 @@ export default function ParticipantList() {
               <Avatar color={avatarColors[idx % avatarColors.length]}>
                 {p.name.charAt(0)}
               </Avatar>
-              <Name>{p.name}</Name>
-              {balanceTag}
+              <DetailsWrapper>
+                <Name>{p.name}</Name>
+                <ModeTag isFixed={p.paymentMode === 'Fixed Amount'}>
+                  {p.paymentMode === 'Fixed Amount' ? `LKR ${p.fixedAmount}` : 'Full'}
+                </ModeTag>
+              </DetailsWrapper>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                {balanceTag}
+                {isModerator(activeEvent) && (
+                  <EditBtn onClick={() => handleEditClick(p)}>✎</EditBtn>
+                )}
+              </div>
             </AttendeeChip>
           );
         })}
@@ -121,14 +176,16 @@ export default function ParticipantList() {
       
       {isModerator(activeEvent) && (
         <>
-          <AddBtn onClick={() => setIsModalOpen(true)}>
+          <AddBtn onClick={() => { setParticipantToEdit(null); setIsModalOpen(true); }}>
             <span>+</span> Add Participant
           </AddBtn>
 
           <AddParticipantModal 
             isOpen={isModalOpen} 
-            onClose={() => setIsModalOpen(false)} 
+            onClose={() => { setIsModalOpen(false); setParticipantToEdit(null); }} 
             onParticipantAdded={handleAddParticipant} 
+            onParticipantUpdated={handleUpdateParticipant}
+            participantToEdit={participantToEdit}
           />
         </>
       )}
