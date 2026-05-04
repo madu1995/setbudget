@@ -12,6 +12,7 @@ export const BudgetProvider = ({ children }) => {
   const [expenses, setExpenses] = useState([]);
   const [settlementReport, setSettlementReport] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const API_URL = 'http://localhost:5000/api';
 
@@ -141,7 +142,9 @@ export const BudgetProvider = ({ children }) => {
       fetchSettlementReport,
       settlementReport,
       totals,
-      loading
+      loading,
+      searchQuery,
+      setSearchQuery
     }}>
       {children}
     </BudgetContext.Provider>

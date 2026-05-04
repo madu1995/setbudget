@@ -67,7 +67,7 @@ const ViewBtn = styled.button`
 `;
 
 export default function Events() {
-  const { events, selectEvent, fetchEvents } = useBudget();
+  const { events, selectEvent, fetchEvents, searchQuery } = useBudget();
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -81,6 +81,11 @@ export default function Events() {
   const handleEventAdded = (newEvent) => {
       fetchEvents(); // Refresh the list
   };
+
+  const filteredEvents = events.filter(e => 
+    e.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (e.description && e.description.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
 
   return (
     <PageContainer>
@@ -111,11 +116,13 @@ export default function Events() {
         eventId={manageModEventId} 
       />
 
-      {events.length === 0 ? (
-          <p style={{ color: '#6B7280' }}>You have not created any events yet.</p>
+      {filteredEvents.length === 0 ? (
+          <p style={{ color: '#6B7280' }}>
+            {searchQuery ? `No events found matching "${searchQuery}"` : "You have not created any events yet."}
+          </p>
       ) : (
         <Grid>
-            {events.map((e) => (
+            {filteredEvents.map((e) => (
                 <EventCard key={e._id}>
                     <EventName>
                         {e.name}

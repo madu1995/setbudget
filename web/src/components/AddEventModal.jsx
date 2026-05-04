@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import axios from 'axios';
 
 const AddEventModal = ({ isOpen, onClose, onEventAdded }) => {
   const [isDetailedMode, setIsDetailedMode] = useState(false);
@@ -63,22 +64,17 @@ const AddEventModal = ({ isOpen, onClose, onEventAdded }) => {
         }
       }
 
-      const response = await fetch('http://localhost:5000/api/events/add', {
-        method: 'POST',
-        body: data,
-      });
+      const response = await axios.post('http://localhost:5000/api/events/add', data);
 
-      const result = await response.json();
-
-      if (response.ok) {
-        onEventAdded(result.event);
+      if (response.status === 201 || response.status === 200) {
+        onEventAdded(response.data.event);
         onClose(); 
       } else {
-        setError(result.message || result.error || 'Failed to add event');
+        setError('Failed to add event');
       }
     } catch (err) {
       console.error('Error submitting form:', err);
-      setError('An error occurred while adding the event.');
+      setError(err.response?.data?.message || err.response?.data?.error || 'An error occurred while adding the event.');
     } finally {
       setIsSubmitting(false);
     }

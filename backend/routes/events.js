@@ -58,6 +58,11 @@ router.post("/add", verifyToken, isAdmin, upload.single('coverImage'), async (re
       return res.status(400).json({ error: 'Event name is required.' });
     }
 
+    const eventExists = await Event.findOne({ name: eventName });
+    if (eventExists) {
+      return res.status(400).json({ message: 'An event with this name already exists' });
+    }
+
     let coverImagePath = null;
     if (req.file) {
       coverImagePath = req.file.path; 
@@ -95,13 +100,20 @@ router.post("/add", verifyToken, isAdmin, upload.single('coverImage'), async (re
 
 // Create new event
 router.post("/", verifyToken, isAdmin, async (req, res) => {
-  const event = new Event({
-    name: req.body.name,
-    description: req.body.description,
-    totalBudget: req.body.totalBudget,
-  });
+  const { name } = req.body;
 
   try {
+    const eventExists = await Event.findOne({ name });
+    if (eventExists) {
+      return res.status(400).json({ message: 'An event with this name already exists' });
+    }
+
+    const event = new Event({
+      name: name,
+      description: req.body.description,
+      totalBudget: req.body.totalBudget,
+    });
+
     const newEvent = await event.save();
     res.status(201).json(newEvent);
   } catch (err) {

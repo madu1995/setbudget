@@ -203,7 +203,7 @@ const MobileHeader = styled.div`
 `;
 
 export default function MainLayout() {
-  const { events, activeEvent, selectEvent, fetchEvents } = useBudget();
+  const { events, activeEvent, selectEvent, fetchEvents, searchQuery, setSearchQuery } = useBudget();
   const { isAdmin, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -211,6 +211,7 @@ export default function MainLayout() {
   const location = useLocation();
 
   const isEventsPage = location.pathname === '/events';
+  const showSearch = location.pathname === '/events';
 
   const handleSelectEvent = (id) => {
     selectEvent(id);
@@ -276,10 +277,16 @@ export default function MainLayout() {
             <LogoIcon />
           </MobileHeader>
           
-          <SearchContainer>
-            <SearchIcon />
-            <SearchInput placeholder="Search (Events/Activities...)" />
-          </SearchContainer>
+          {showSearch && (
+            <SearchContainer>
+              <SearchIcon />
+              <SearchInput 
+                placeholder="Search Events..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </SearchContainer>
+          )}
 
           {!isEventsPage && isAdmin && (
             <NewEventBtn onClick={() => setIsModalOpen(true)}>
