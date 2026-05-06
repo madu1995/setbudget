@@ -1,9 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const Participant = require("../models/Participant");
+const { verifyToken, canManageEvent } = require("../middleware/auth");
 
 // Get participants for an event
-router.get("/event/:eventId", async (req, res) => {
+router.get("/event/:eventId", verifyToken, async (req, res) => {
   try {
     const participants = await Participant.find({ eventId: req.params.eventId });
     res.json(participants);
@@ -13,15 +14,59 @@ router.get("/event/:eventId", async (req, res) => {
 });
 
 // Add new participant
-router.post("/", async (req, res) => {
+router.post("/", verifyToken, canManageEvent, async (req, res) => {
+  const { name, phone, eventId, paymentMode, fixedAmount } = req.body;
+
+  // Validation
+  if (!name) {
+    return res.status(400).json({ message: "Name is required" });
+  }
+
+  if (phone) {
+    const slPhoneRegex = /^(?:0|94|\+94)?7(?:0|1|2|4|5|6|7|8)\d{7}$/;
+    if (!slPhoneRegex.test(phone)) {
+      return res.status(400).json({ message: "Invalid Sri Lankan phone number" });
+    }
+  }
+
+  if (!eventId) {
+    return res.status(400).json({ message: "Event ID is required" });
+  }
+
   const participant = new Participant({
-    name: req.body.name,
-    eventId: req.body.eventId,
+    name,
+    phone,
+    eventId,
+    paymentMode: paymentMode || "Full Share",
+    fixedAmount: fixedAmount ? parseFloat(fixedAmount) : 0,
   });
 
   try {
     const newParticipant = await participant.save();
     res.status(201).json(newParticipant);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+// Update participant
+router.put("/:id/event/:eventId", verifyToken, canManageEvent, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, phone, paymentMode, fixedAmount } = req.body;
+
+    const updateData = {};
+    if (name) updateData.name = name;
+    if (phone !== undefined) updateData.phone = phone;
+    if (paymentMode) updateData.paymentMode = paymentMode;
+    if (fixedAmount !== undefined) updateData.fixedAmount = parseFloat(fixedAmount);
+
+    const updatedParticipant = await Participant.findByIdAndUpdate(id, updateData, { new: true });
+    if (!updatedParticipant) {
+      return res.status(404).json({ message: "Participant not found" });
+    }
+    
+    res.json(updatedParticipant);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }

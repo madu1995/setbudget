@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_URL } from '../config';
 
 const BudgetContext = createContext();
 
@@ -10,9 +11,11 @@ export const BudgetProvider = ({ children }) => {
   const [activeEvent, setActiveEvent] = useState(null);
   const [participants, setParticipants] = useState([]);
   const [expenses, setExpenses] = useState([]);
+  const [settlementReport, setSettlementReport] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const API_URL = 'http://localhost:5000/api';
+
 
   useEffect(() => {
     fetchEvents();
@@ -31,11 +34,21 @@ export const BudgetProvider = ({ children }) => {
   };
 
   const selectEvent = async (eventId) => {
-    const event = events.find(e => e._id === eventId);
+    const event = events.find(e => e._id.toString() === eventId.toString());
     setActiveEvent(event);
     if(eventId) {
       fetchParticipants(eventId);
       fetchExpenses(eventId);
+      fetchSettlementReport(eventId);
+    }
+  };
+
+  const fetchSettlementReport = async (eventId) => {
+    try {
+      const res = await axios.get(`${API_URL}/events/${eventId}/settlement-report`);
+      setSettlementReport(res.data);
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -67,16 +80,35 @@ export const BudgetProvider = ({ children }) => {
     }
   };
 
-  const addParticipant = async (name) => {
+  const addParticipant = async (name, phone, paymentMode = 'Full Share', fixedAmount = 0) => {
     if (!activeEvent) return;
     try {
       const res = await axios.post(`${API_URL}/participants`, {
         name,
+        phone,
+        paymentMode,
+        fixedAmount,
         eventId: activeEvent._id
       });
       setParticipants([...participants, res.data]);
+      fetchSettlementReport(activeEvent._id);
+      return res.data; // Return for component use
     } catch (err) {
       console.error(err);
+      throw err; // Throw for component to handle errors
+    }
+  };
+
+  const updateParticipant = async (id, updateData) => {
+    if (!activeEvent) return;
+    try {
+      const res = await axios.put(`${API_URL}/participants/${id}/event/${activeEvent._id}`, updateData);
+      setParticipants(participants.map(p => p._id === id ? res.data : p));
+      fetchSettlementReport(activeEvent._id);
+      return res.data;
+    } catch (err) {
+      console.error(err);
+      throw err;
     }
   };
 
@@ -87,6 +119,7 @@ export const BudgetProvider = ({ children }) => {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       setExpenses([res.data, ...expenses]);
+      fetchSettlementReport(activeEvent._id);
     } catch (err) {
       console.error(err);
     }
@@ -110,6 +143,31 @@ export const BudgetProvider = ({ children }) => {
     participantCount: participants.length
   };
 
+  const deleteEvent = async (id) => {
+    try {
+      await axios.delete(`${API_URL}/events/${id}`);
+      setEvents(events.filter(e => e._id !== id));
+      if (activeEvent && activeEvent._id === id) {
+        setActiveEvent(null);
+        // Optionally select the first remaining event
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const updateEvent = async (id, eventData) => {
+    try {
+      const res = await axios.put(`${API_URL}/events/${id}`, eventData);
+      setEvents(events.map(e => e._id === id ? res.data : e));
+      if (activeEvent && activeEvent._id === id) {
+        setActiveEvent(res.data);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   return (
     <BudgetContext.Provider value={{
       events,
@@ -118,11 +176,19 @@ export const BudgetProvider = ({ children }) => {
       participants,
       expenses,
       addEvent,
+      deleteEvent,
+      updateEvent,
       addParticipant,
+      updateParticipant,
       addExpense,
       closeEvent,
+      fetchEvents, 
+      fetchSettlementReport,
+      settlementReport,
       totals,
-      loading
+      loading,
+      searchQuery,
+      setSearchQuery
     }}>
       {children}
     </BudgetContext.Provider>
