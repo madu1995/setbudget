@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import axios from 'axios';
+import { API_URL } from '../config';
 import { useAuth } from '../context/AuthContext';
 
 const PageContainer = styled.div`
@@ -84,7 +85,7 @@ const Table = styled.table`
   }
 `;
 
-const API_URL = 'http://localhost:5000/api';
+
 
 export default function UserManagement() {
   const { user: currentUser } = useAuth();

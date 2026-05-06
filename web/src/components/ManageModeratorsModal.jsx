@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import axios from 'axios';
+import { API_URL } from '../config';
 
 const ModalOverlay = styled.div`
   position: fixed;
@@ -61,7 +62,7 @@ const RemoveBtn = styled(Btn)`
   color: white;
 `;
 
-const API_URL = 'http://localhost:5000/api';
+
 
 export default function ManageModeratorsModal({ isOpen, onClose, eventId }) {
   const [users, setUsers] = useState([]);

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_URL } from '../config';
 
 const BudgetContext = createContext();
 
@@ -14,7 +15,7 @@ export const BudgetProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const API_URL = 'http://localhost:5000/api';
+
 
   useEffect(() => {
     fetchEvents();

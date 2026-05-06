@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_URL } from '../config';
 
 const AddEventModal = ({ isOpen, onClose, onEventAdded, eventToEdit = null }) => {
   const [isDetailedMode, setIsDetailedMode] = useState(false);
@@ -122,8 +123,8 @@ const AddEventModal = ({ isOpen, onClose, onEventAdded, eventToEdit = null }) =>
       }
 
       const url = eventToEdit 
-        ? `http://localhost:5000/api/events/${eventToEdit._id}`
-        : 'http://localhost:5000/api/events/add';
+        ? `${API_URL}/events/${eventToEdit._id}`
+        : `${API_URL}/events/add`;
       
       const method = eventToEdit ? 'put' : 'post';
       const response = await axios({

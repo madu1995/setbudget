@@ -9,8 +9,9 @@ const app = express();
 // Middleware
 app.use(cors());
 app.use(express.json());
-// Serve uploaded images statically
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+// Vercel වලදී uploads folder එකක් ලිවීමට නොහැකි නිසා මෙය දැනට අක්‍රිය කරන්න
+// app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Routes
 const authRoutes = require("./routes/auth");
@@ -27,7 +28,7 @@ app.use("/api/expenses", expenseRoutes);
 
 // MongoDB connection
 const PORT = process.env.PORT || 5000;
-const MONGO_URI = "mongodb+srv://trmadu447_db_user:yGioHe9YHsUzKeNq@cluster0.6q0hhuy.mongodb.net/setbudget?retryWrites=true&w=majority&appName=Cluster0";
+const MONGO_URI = process.env.MONGODB_URI || "mongodb+srv://trmadu447_db_user:setbudget123@cluster0.6q0hhuy.mongodb.net/setbudget?retryWrites=true&w=majority&appName=Cluster0";
 
 const seedAdmin = async () => {
   const User = require("./models/User");
@@ -48,7 +49,7 @@ const seedAdmin = async () => {
   }
 };
 
-console.log("Attempting to connect to MongoDB...");
+// MongoDB එකට connect වීම
 mongoose
   .connect(MONGO_URI)
   .then(async () => {
@@ -56,10 +57,15 @@ mongoose
     await seedAdmin();
   })
   .catch((err) => {
-    console.error("❌ Database connection error:");
-    console.error(err);
+    console.error("❌ Database connection error:", err);
   });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Backend server running on port ${PORT}`);
-});
+// Local development සඳහා පමණක් listen කරන්න
+if (process.env.NODE_ENV !== 'production') {
+    app.listen(PORT, () => {
+      console.log(`🚀 Backend server running on port ${PORT}`);
+    });
+}
+
+// Vercel සඳහා අත්‍යවශ්‍ය වේ
+module.exports = app;
