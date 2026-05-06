@@ -17,13 +17,8 @@
       "destination": "backend/server.js"
     },
     {
-      "source": "/uploads/(.*)",
-      "destination": "backend/uploads/$1"
-    },
-    {
       "source": "/(.*)",
-      "destination": "web/$1",
-      "check": true
+      "destination": "web/$1"
     }
   ]
 }
