@@ -20,7 +20,7 @@ router.get("/event/:eventId", verifyToken, async (req, res) => {
 // Create new expense with optional image upload
 router.post("/", verifyToken, upload.single("receipt"), canManageEvent, async (req, res) => {
   try {
-    const receiptImage = req.file ? `/uploads/${req.file.filename}` : null;
+    const receiptImage = req.file ? "receipt_uploaded_via_memory" : null;
 
     const expense = new Expense({
       description: req.body.description,

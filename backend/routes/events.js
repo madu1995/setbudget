@@ -1,9 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const Event = require("../models/Event");
+const upload = require("../middleware/upload");
 const { verifyToken, isAdmin, canManageEvent } = require("../middleware/auth");
-const multer = require('multer');
-const path = require('path');
 const Participant = require("../models/Participant");
 const Expense = require("../models/Expense");
 
@@ -32,26 +31,7 @@ router.get("/", verifyToken, async (req, res) => {
   }
 });
 
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/'); 
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
-const upload = multer({ 
-  storage: storage,
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only images are allowed.'));
-    }
-  }
-});
+// Shared upload middleware is used instead
 
 // Create new event (Detailed & Quick)
 router.post("/add", verifyToken, isAdmin, upload.single('coverImage'), async (req, res) => {
@@ -80,7 +60,10 @@ router.post("/add", verifyToken, isAdmin, upload.single('coverImage'), async (re
 
     let coverImagePath = null;
     if (req.file) {
-      coverImagePath = req.file.path; 
+      // Since we use memory storage on Vercel, we can't save to a local path.
+      // In a real production app, you would upload the buffer to Cloudinary/S3 here.
+      // For now, we set a placeholder to indicate an image was received but not saved locally.
+      coverImagePath = "uploaded_via_memory"; 
     }
 
     let participantsArray = [];
@@ -320,7 +303,7 @@ router.put("/:id", verifyToken, isAdmin, upload.single('coverImage'), async (req
     };
 
     if (req.file) {
-      updateData.coverImage = req.file.path;
+      updateData.coverImage = "uploaded_via_memory";
     }
 
     const updatedEvent = await Event.findByIdAndUpdate(id, updateData, { new: true });
