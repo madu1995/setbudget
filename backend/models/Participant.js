@@ -6,6 +6,8 @@ const participantSchema = new mongoose.Schema({
   eventId: { type: mongoose.Schema.Types.ObjectId, ref: "Event", required: true },
   paymentMode: { type: String, enum: ["Full Share", "Fixed Amount"], default: "Full Share" },
   fixedAmount: { type: Number, default: 0 },
+  baseFee: { type: Number, default: 0 },
+  initialDeposit: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now }
 });
 

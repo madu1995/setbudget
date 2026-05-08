@@ -185,51 +185,68 @@ router.get("/:id/settlement-report", verifyToken, async (req, res) => {
     const participants = await Participant.find({ eventId });
     const expenses = await Expense.find({ eventId });
 
+    // --- 1. Total Financials ---
+    // Total Expense = Sum of all expenses
     const totalSpent = expenses.reduce((acc, curr) => acc + curr.amount, 0);
+    
+    // Total Expected = Sum of all participants' baseFees
+    const totalExpected = participants.reduce((acc, p) => acc + (p.baseFee || p.fixedAmount || 0), 0);
+    
+    // Deficit / Overrun
+    const deficit = totalSpent - totalExpected;
+    
+    // Deficit Share per participant
+    const participantCount = participants.length;
+    const deficitShare = participantCount > 0 ? deficit / participantCount : 0;
 
-    // Mixed Splitting Logic
-    let totalFixed = 0;
-    let fullPayerCount = 0;
-
-    participants.forEach(p => {
-      if (p.paymentMode === 'Fixed Amount') {
-        totalFixed += (p.fixedAmount || 0);
-      } else {
-        fullPayerCount++;
-      }
-    });
-
-    const remainingBalance = totalSpent - totalFixed;
-    const share = fullPayerCount > 0 ? remainingBalance / fullPayerCount : 0;
-
+    // --- 2. Participant Balances ---
     const participantBalances = participants.map(p => {
-      const paid = expenses
-        .filter(e => e.paidBy.toString() === p._id.toString())
+      const baseFee = p.baseFee || p.fixedAmount || 0;
+      
+      // Liability = baseFee + deficitShare
+      const liability = baseFee + deficitShare;
+      
+      // Personal Expenses paid by this participant (out-of-pocket)
+      const personalPaid = expenses
+        .filter(e => e.paidBy !== "FUND" && e.paidBy.toString() === p._id.toString())
         .reduce((acc, curr) => acc + curr.amount, 0);
       
-      const assignedShare = p.paymentMode === 'Fixed Amount' ? (p.fixedAmount || 0) : share;
-      const balance = paid - assignedShare;
+      // Total Paid = initialDeposit + personalPaid
+      const totalPaid = (p.initialDeposit || 0) + personalPaid;
+      
+      // Final Balance = Liability - TotalPaid
+      // If > 0, owes money. If < 0, receive refund.
+      const balance = liability - totalPaid;
 
       return {
         _id: p._id,
         name: p.name,
-        paymentMode: p.paymentMode || 'Full Share',
-        fixedAmount: p.fixedAmount || 0,
-        totalPaid: paid,
-        share: assignedShare, // What they are supposed to pay
-        balance: balance // Positive means owed to them, negative means they owe
+        baseFee,
+        initialDeposit: p.initialDeposit || 0,
+        personalPaid,
+        totalPaid,
+        liability,
+        balance
       };
     });
 
-    let debtors = participantBalances.filter(p => p.balance <= -0.01).map(p => ({ ...p, owe: Math.abs(p.balance) }));
-    let creditors = participantBalances.filter(p => p.balance >= 0.01).map(p => ({ ...p, owed: p.balance }));
+    // --- 3. Debt Balancing (Transactions) ---
+    // Debtors: Balance > 0 (owes money)
+    let debtors = participantBalances
+      .filter(p => p.balance >= 0.01)
+      .map(p => ({ ...p, owe: p.balance }));
+    
+    // Creditors: Balance < 0 (receive refund)
+    let creditors = participantBalances
+      .filter(p => p.balance <= -0.01)
+      .map(p => ({ ...p, owed: Math.abs(p.balance) }));
 
     debtors.sort((a, b) => b.owe - a.owe);
     creditors.sort((a, b) => b.owed - a.owed);
 
     const transactions = [];
-    let i = 0; 
-    let j = 0; 
+    let i = 0;
+    let j = 0;
 
     while (i < debtors.length && j < creditors.length) {
       const debtor = debtors[i];
@@ -237,11 +254,7 @@ router.get("/:id/settlement-report", verifyToken, async (req, res) => {
       const amount = Math.min(debtor.owe, creditor.owed);
 
       if (amount >= 0.01) {
-        transactions.push({
-          from: debtor.name,
-          to: creditor.name,
-          amount: amount
-        });
+        transactions.push({ from: debtor.name, to: creditor.name, amount });
       }
 
       debtor.owe -= amount;
@@ -251,10 +264,24 @@ router.get("/:id/settlement-report", verifyToken, async (req, res) => {
       if (creditor.owed < 0.01) j++;
     }
 
+    // Fund Accounting (for informational purposes)
+    const totalFundCollected = participants.reduce((acc, p) => acc + (p.initialDeposit || 0), 0);
+    const totalFundSpent = expenses
+      .filter(e => e.paidBy === "FUND")
+      .reduce((acc, e) => acc + e.amount, 0);
+    const fundRemaining = totalFundCollected - totalFundSpent;
+
     res.json({
       totalSpent,
-      participantCount: participants.length,
-      share,
+      totalExpected,
+      deficit,
+      deficitShare,
+      participantCount,
+      fundSummary: {
+        totalCollected: totalFundCollected,
+        totalSpentFromFund: totalFundSpent,
+        remainingBalance: fundRemaining,
+      },
       balances: participantBalances,
       transactions
     });
@@ -262,6 +289,8 @@ router.get("/:id/settlement-report", verifyToken, async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+
+
 
 // Update event
 router.put("/:id", verifyToken, isAdmin, upload.single('coverImage'), async (req, res) => {

@@ -80,7 +80,7 @@ export const BudgetProvider = ({ children }) => {
     }
   };
 
-  const addParticipant = async (name, phone, paymentMode = 'Full Share', fixedAmount = 0) => {
+  const addParticipant = async (name, phone, paymentMode = 'Full Share', fixedAmount = 0, initialDeposit = 0) => {
     if (!activeEvent) return;
     try {
       const res = await axios.post(`${API_URL}/participants`, {
@@ -88,14 +88,15 @@ export const BudgetProvider = ({ children }) => {
         phone,
         paymentMode,
         fixedAmount,
+        initialDeposit,
         eventId: activeEvent._id
       });
       setParticipants([...participants, res.data]);
       fetchSettlementReport(activeEvent._id);
-      return res.data; // Return for component use
+      return res.data;
     } catch (err) {
       console.error(err);
-      throw err; // Throw for component to handle errors
+      throw err;
     }
   };
 
@@ -115,10 +116,32 @@ export const BudgetProvider = ({ children }) => {
   const addExpense = async (formData) => {
     if (!activeEvent) return;
     try {
-      const res = await axios.post(`${API_URL}/expenses`, formData, {
+      await axios.post(`${API_URL}/expenses`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      setExpenses([res.data, ...expenses]);
+      fetchExpenses(activeEvent._id);
+      fetchSettlementReport(activeEvent._id);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const updateExpense = async (id, updateData) => {
+    if (!activeEvent) return;
+    try {
+      await axios.put(`${API_URL}/expenses/${id}`, updateData);
+      fetchExpenses(activeEvent._id);
+      fetchSettlementReport(activeEvent._id);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const deleteExpense = async (id) => {
+    if (!activeEvent) return;
+    try {
+      await axios.delete(`${API_URL}/expenses/${id}`);
+      fetchExpenses(activeEvent._id);
       fetchSettlementReport(activeEvent._id);
     } catch (err) {
       console.error(err);
@@ -181,6 +204,8 @@ export const BudgetProvider = ({ children }) => {
       addParticipant,
       updateParticipant,
       addExpense,
+      updateExpense,
+      deleteExpense,
       closeEvent,
       fetchEvents, 
       fetchSettlementReport,
