@@ -6,7 +6,7 @@ const bcrypt = require('bcryptjs');
 const { verifyToken } = require('../middleware/auth');
 
 const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
+  return jwt.sign({ id }, process.env.JWT_SECRET || 'setbudget_super_secret_jwt_key_2024', {
     expiresIn: '30d',
   });
 };
