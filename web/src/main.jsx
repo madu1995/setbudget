@@ -5,7 +5,7 @@ import axios from 'axios'
 import { API_URL } from './config'
 
 // Pre-warm the server immediately when the JS bundle is loaded
-axios.get(`${API_URL}/events`).catch(() => {});
+axios.get(`${API_URL}/ping`).catch(() => {});
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {

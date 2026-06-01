@@ -20,6 +20,11 @@ const eventRoutes = require("./routes/events");
 const participantRoutes = require("./routes/participants");
 const expenseRoutes = require("./routes/expenses");
 
+// Public ping endpoint for pre-warming/cold-start wake-up
+app.get("/api/ping", (req, res) => {
+  res.json({ status: "ok" });
+});
+
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/events", eventRoutes);

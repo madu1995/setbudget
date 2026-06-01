@@ -1,12 +1,14 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_URL } from '../config';
+import { useAuth } from './AuthContext';
 
 const BudgetContext = createContext();
 
 export const useBudget = () => useContext(BudgetContext);
 
 export const BudgetProvider = ({ children }) => {
+  const { user } = useAuth();
   const [events, setEvents] = useState([]);
   const [activeEvent, setActiveEvent] = useState(null);
   const [participants, setParticipants] = useState([]);
@@ -14,12 +16,17 @@ export const BudgetProvider = ({ children }) => {
   const [settlementReport, setSettlementReport] = useState(null);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-
-
-
   useEffect(() => {
-    fetchEvents();
-  }, []);
+    if (user && !user.requiresPasswordChange) {
+      fetchEvents();
+    } else {
+      setEvents([]);
+      setActiveEvent(null);
+      setParticipants([]);
+      setExpenses([]);
+      setSettlementReport(null);
+    }
+  }, [user]);
 
   const fetchEvents = async () => {
     setLoading(true);
