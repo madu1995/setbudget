@@ -22,6 +22,7 @@ export const BudgetProvider = ({ children }) => {
   }, []);
 
   const fetchEvents = async () => {
+    setLoading(true);
     try {
       const res = await axios.get(`${API_URL}/events`);
       setEvents(res.data);
@@ -30,6 +31,8 @@ export const BudgetProvider = ({ children }) => {
       }
     } catch (err) {
       console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 

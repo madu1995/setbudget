@@ -29,8 +29,19 @@ const SectionTitle = styled.h2`
 `;
 
 export default function Home() {
-  const { activeEvent, totals } = useBudget();
+  const { activeEvent, totals, loading } = useBudget();
   const { isModerator } = useAuth();
+
+  if (loading) {
+    return (
+      <div style={{ textAlign: 'center', marginTop: '100px', padding: '0 20px' }}>
+        <div style={{ border: '4px solid #f3f3f3', borderTop: '4px solid #007BFF', borderRadius: '50%', width: '40px', height: '40px', animation: 'spin 1s linear infinite', margin: '0 auto 20px auto' }}></div>
+        <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+        <h2 style={{ color: '#111827' }}>Waking up server...</h2>
+        <p style={{ color: '#6B7280' }}>Please wait a moment while we load your data. This can take a few seconds.</p>
+      </div>
+    );
+  }
 
   if (!activeEvent) {
     return (
