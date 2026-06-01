@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import styled from 'styled-components';
 import { useBudget } from '../context/BudgetContext';
+import { useAuth } from '../context/AuthContext';
 
 const Card = styled.div`
   background: ${props => props.theme.colors.card};
@@ -127,7 +128,8 @@ const Footer = styled.div`
 `;
 
 export default function ExpenseForm({ mode = 'add' }) {
-  const { participants, addExpense, activeEvent, expenses } = useBudget();
+  const { participants, addExpense, updateExpense, deleteExpense, activeEvent, expenses } = useBudget();
+  const { isModerator } = useAuth();
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [paidBy, setPaidBy] = useState('');
@@ -135,11 +137,40 @@ export default function ExpenseForm({ mode = 'add' }) {
   const [preview, setPreview] = useState('');
   const fileInputRef = useRef(null);
 
+  const [editingId, setEditingId] = useState(null);
+  const [editDesc, setEditDesc] = useState('');
+  const [editAmount, setEditAmount] = useState('');
+  const [editPaidBy, setEditPaidBy] = useState('');
+
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
     if (selectedFile) {
       setFile(selectedFile);
       setPreview(URL.createObjectURL(selectedFile));
+    }
+  };
+
+  const handleEditClick = (exp) => {
+    setEditingId(exp._id);
+    setEditDesc(exp.description);
+    setEditAmount(exp.amount);
+    setEditPaidBy(exp.paidBy?._id || exp.paidBy);
+  };
+
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    if (!editDesc || !editAmount || !editPaidBy) return;
+    await updateExpense(editingId, {
+      description: editDesc,
+      amount: editAmount,
+      paidBy: editPaidBy
+    });
+    setEditingId(null);
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm('Are you sure you want to delete this expense?')) {
+      await deleteExpense(id);
     }
   };
 
@@ -171,24 +202,64 @@ export default function ExpenseForm({ mode = 'add' }) {
       <Card>
         <ListContainer>
           {expenses.length === 0 && <p style={{ color: '#6B7280', fontSize: '0.9rem' }}>No recent expenses.</p>}
-          {expenses.map(exp => (
-            <ExpenseItem key={exp._id}>
-              <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-                <ExpenseIcon />
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{exp.description}</div>
-                  <div style={{ color: '#6B7280', fontSize: '0.85rem' }}>Paid by {exp.paidBy?.name}</div>
+          {expenses.map(exp => {
+            if (editingId === exp._id) {
+              return (
+                <ExpenseItem key={exp._id} style={{ flexDirection: 'column', alignItems: 'stretch', gap: '10px' }}>
+                  <Input 
+                    value={editDesc} 
+                    onChange={e => setEditDesc(e.target.value)} 
+                    placeholder="Description" 
+                  />
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <Input 
+                      type="number" 
+                      value={editAmount} 
+                      onChange={e => setEditAmount(e.target.value)} 
+                      placeholder="Amount" 
+                      style={{ flex: 1 }}
+                    />
+                    <Select value={editPaidBy} onChange={e => setEditPaidBy(e.target.value)} style={{ flex: 1 }}>
+                      <option value="FUND">💰 Event Fund</option>
+                      {participants.map(p => (
+                        <option key={p._id} value={p._id}>{p.name}</option>
+                      ))}
+                    </Select>
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                    <button type="button" onClick={() => setEditingId(null)} style={{ padding: '8px 16px', background: '#F1F5F9', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Cancel</button>
+                    <button type="button" onClick={handleUpdate} style={{ padding: '8px 16px', background: '#007BFF', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Save</button>
+                  </div>
+                </ExpenseItem>
+              );
+            }
+
+            const isFund = exp.paidBy === 'FUND' || exp.paidBy?._id === 'FUND';
+            const payerName = isFund ? '💰 Event Fund' : (exp.paidBy?.name || 'Unknown');
+
+            return (
+              <ExpenseItem key={exp._id}>
+                <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                  <ExpenseIcon />
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{exp.description}</div>
+                    <div style={{ color: isFund ? '#1d4ed8' : '#6B7280', fontSize: '0.85rem' }}>
+                      Paid by {payerName}
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontWeight: 700 }}>LKR {exp.amount.toLocaleString()}</div>
-                <div style={{ color: '#9CA3AF', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                  Bill
+                <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '5px' }}>
+                  <div style={{ fontWeight: 700 }}>LKR {exp.amount.toLocaleString()}</div>
+                  {isModerator(activeEvent) && (
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button onClick={() => handleEditClick(exp)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1rem' }} title="Edit">✏️</button>
+                      <button onClick={() => handleDelete(exp._id)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1rem' }} title="Delete">🗑️</button>
+                    </div>
+                  )}
                 </div>
-              </div>
-            </ExpenseItem>
-          ))}
+              </ExpenseItem>
+            );
+          })}
         </ListContainer>
         <Footer>Active Event: {activeEvent.name}</Footer>
       </Card>
@@ -221,7 +292,8 @@ export default function ExpenseForm({ mode = 'add' }) {
       <FormGroup>
         <Label>Paid By (Dropdown)</Label>
         <Select value={paidBy} onChange={(e) => setPaidBy(e.target.value)} required>
-          <option value="" disabled>Select Attendee</option>
+          <option value="" disabled>Select Payer</option>
+          <option value="FUND">💰 Event Fund</option>
           {participants.map(p => (
             <option key={p._id} value={p._id}>{p.name}</option>
           ))}

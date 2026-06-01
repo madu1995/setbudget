@@ -8,8 +8,9 @@ const AddParticipantModal = ({ isOpen, onClose, onParticipantAdded, onParticipan
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
-    paymentMode: 'Full Share',
-    fixedAmount: '',
+    paymentMode: 'Fixed Amount',
+    baseFee: '',
+    initialDeposit: '',
   });
   
   const [error, setError] = useState('');
@@ -20,15 +21,17 @@ const AddParticipantModal = ({ isOpen, onClose, onParticipantAdded, onParticipan
       setFormData({
         name: participantToEdit.name || '',
         phone: participantToEdit.phone || '',
-        paymentMode: participantToEdit.paymentMode || 'Full Share',
-        fixedAmount: participantToEdit.fixedAmount || '',
+        paymentMode: participantToEdit.paymentMode || 'Fixed Amount',
+        baseFee: participantToEdit.baseFee || participantToEdit.fixedAmount || '',
+        initialDeposit: participantToEdit.initialDeposit || '',
       });
     } else if (isOpen) {
       setFormData({
         name: '',
         phone: '',
-        paymentMode: 'Full Share',
-        fixedAmount: '',
+        paymentMode: 'Fixed Amount',
+        baseFee: '',
+        initialDeposit: '',
       });
     }
   }, [participantToEdit, isOpen]);
@@ -68,10 +71,18 @@ const AddParticipantModal = ({ isOpen, onClose, onParticipantAdded, onParticipan
           name: formData.name,
           phone: formData.phone,
           paymentMode: formData.paymentMode,
-          fixedAmount: formData.fixedAmount
+          baseFee: formData.baseFee,
+          fixedAmount: formData.baseFee, // Keep for backward compatibility
+          initialDeposit: formData.initialDeposit === '' ? 0 : Number(formData.initialDeposit),
         });
       } else {
-        await onParticipantAdded(formData.name, formData.phone, formData.paymentMode, formData.fixedAmount);
+        await onParticipantAdded(
+          formData.name,
+          formData.phone,
+          formData.paymentMode,
+          formData.baseFee,
+          formData.initialDeposit === '' ? 0 : Number(formData.initialDeposit)
+        );
       }
       onClose();
     } catch (err) {
@@ -93,8 +104,10 @@ const AddParticipantModal = ({ isOpen, onClose, onParticipantAdded, onParticipan
     padding: '24px',
     borderRadius: '12px',
     width: '100%',
-    maxWidth: '400px',
-    boxShadow: '0 10px 25px rgba(0,0,0,0.2)'
+    maxWidth: '420px',
+    boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
+    maxHeight: '90vh',
+    overflowY: 'auto',
   };
 
   const inputStyle = {
@@ -103,11 +116,23 @@ const AddParticipantModal = ({ isOpen, onClose, onParticipantAdded, onParticipan
     boxSizing: 'border-box', fontSize: '1rem'
   };
 
+  const labelStyle = {
+    display: 'block', fontSize: '0.9rem', fontWeight: '600', color: '#495057'
+  };
+
   const buttonStyle = {
     backgroundColor: '#007BFF',
     color: 'white', padding: '12px', border: 'none', borderRadius: '8px',
     cursor: 'pointer', fontWeight: 'bold', width: '100%', fontSize: '1rem',
     marginTop: '10px'
+  };
+
+  const depositSectionStyle = {
+    backgroundColor: '#f0f7ff',
+    border: '1px solid #b3d4f5',
+    borderRadius: '8px',
+    padding: '14px 16px',
+    marginBottom: '16px',
   };
 
   return (
@@ -121,26 +146,47 @@ const AddParticipantModal = ({ isOpen, onClose, onParticipantAdded, onParticipan
         {error && <div style={{ color: '#dc3545', marginBottom: '16px', fontSize: '0.9rem', backgroundColor: '#f8d7da', padding: '10px', borderRadius: '6px' }}>{error}</div>}
 
         <form onSubmit={handleSubmit}>
-          <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: '600', color: '#495057' }}>Name *</label>
+          <label style={labelStyle}>Name *</label>
           <input type="text" name="name" value={formData.name} onChange={handleChange} style={inputStyle} placeholder="John Doe" />
 
-          <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: '600', color: '#495057' }}>Phone Number (Optional)</label>
+          <label style={labelStyle}>Phone Number (Optional)</label>
           <input type="text" name="phone" value={formData.phone} onChange={handleChange} style={inputStyle} placeholder="07XXXXXXXX" />
+
+          {/* Common Fund Deposit — always visible */}
+          <div style={depositSectionStyle}>
+            <label style={{ ...labelStyle, color: '#1d4ed8', marginBottom: '4px' }}>
+              💰 Initial Fund Deposit (LKR)
+            </label>
+            <p style={{ fontSize: '0.78rem', color: '#6B7280', margin: '0 0 8px 0' }}>
+              Amount contributed to the common fund before the event.
+            </p>
+            <input
+              type="number"
+              name="initialDeposit"
+              value={formData.initialDeposit}
+              onChange={handleChange}
+              style={{ ...inputStyle, marginBottom: 0, backgroundColor: 'white' }}
+              placeholder="0"
+              min="0"
+            />
+          </div>
 
           {isModerator(activeEvent) && (
             <>
-              <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: '600', color: '#495057' }}>Payment Mode</label>
-              <select name="paymentMode" value={formData.paymentMode} onChange={handleChange} style={inputStyle}>
-                <option value="Full Share">Full Share</option>
-                <option value="Fixed Amount">Fixed Amount</option>
-              </select>
-
-              {formData.paymentMode === 'Fixed Amount' && (
-                <>
-                  <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: '600', color: '#495057' }}>Fixed Amount (LKR)</label>
-                  <input type="number" name="fixedAmount" value={formData.fixedAmount} onChange={handleChange} style={inputStyle} placeholder="e.g. 1500" min="0" />
-                </>
-              )}
+              <label style={labelStyle}>Target Contribution (Base Fee) *</label>
+              <p style={{ fontSize: '0.78rem', color: '#6B7280', margin: '0 0 8px 0' }}>
+                Base amount for this participant (e.g. 2500 for drinkers, 1000 for non-drinkers).
+              </p>
+              <input
+                type="number"
+                name="baseFee"
+                value={formData.baseFee}
+                onChange={handleChange}
+                style={inputStyle}
+                placeholder="e.g. 2500"
+                min="0"
+                required
+              />
             </>
           )}
 

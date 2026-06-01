@@ -55,8 +55,8 @@ const BalanceTag = styled.div`
   font-weight: 600;
   padding: 2px 6px;
   border-radius: 4px;
-  background-color: ${props => props.status === 'owed' ? '#EBF5FF' : props.status === 'owes' ? '#FEE2E2' : '#F3F4F6'};
-  color: ${props => props.status === 'owed' ? '#007BFF' : props.status === 'owes' ? '#DC2626' : '#6B7280'};
+  background-color: ${props => props.status === 'refund' ? '#D1FAE5' : props.status === 'owes' ? '#FEE2E2' : '#F3F4F6'};
+  color: ${props => props.status === 'refund' ? '#10B981' : props.status === 'owes' ? '#DC2626' : '#6B7280'};
 `;
 
 const ModeTag = styled.div`
@@ -119,8 +119,8 @@ export default function ParticipantList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [participantToEdit, setParticipantToEdit] = useState(null);
 
-  const handleAddParticipant = async (name, phone, paymentMode, fixedAmount) => {
-    await addParticipant(name, phone, paymentMode, fixedAmount);
+  const handleAddParticipant = async (name, phone, paymentMode, fixedAmount, initialDeposit) => {
+    await addParticipant(name, phone, paymentMode, fixedAmount, initialDeposit);
   };
 
   const handleUpdateParticipant = async (id, data) => {
@@ -143,10 +143,10 @@ export default function ParticipantList() {
           let balanceTag = null;
           
           if (pReport) {
-            if (pReport.balance > 0.01) {
-              balanceTag = <BalanceTag status="owed">+LKR {pReport.balance.toLocaleString(undefined, { maximumFractionDigits: 0 })}</BalanceTag>;
-            } else if (pReport.balance < -0.01) {
-              balanceTag = <BalanceTag status="owes">Owes LKR {Math.abs(pReport.balance).toLocaleString(undefined, { maximumFractionDigits: 0 })}</BalanceTag>;
+            if (pReport.balance < -0.01) {
+              balanceTag = <BalanceTag status="refund">Refund LKR {Math.abs(pReport.balance).toLocaleString(undefined, { maximumFractionDigits: 0 })}</BalanceTag>;
+            } else if (pReport.balance > 0.01) {
+              balanceTag = <BalanceTag status="owes">Owes LKR {pReport.balance.toLocaleString(undefined, { maximumFractionDigits: 0 })}</BalanceTag>;
             } else {
               balanceTag = <BalanceTag status="settled">Settled</BalanceTag>;
             }
@@ -159,8 +159,16 @@ export default function ParticipantList() {
               </Avatar>
               <DetailsWrapper>
                 <Name>{p.name}</Name>
-                <div style={{ display: 'flex', alignItems: 'center' }}>
+                {p.initialDeposit > 0 && (
+                  <div style={{ fontSize: '0.72rem', color: '#1d4ed8', fontWeight: '700', marginBottom: '2px' }}>
+                    💰 LKR {p.initialDeposit.toLocaleString()}
+                  </div>
+                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
                   {balanceTag}
+                  {p.paymentMode === 'Fixed Amount' && (
+                    <ModeTag isFixed>Fixed</ModeTag>
+                  )}
                 </div>
               </DetailsWrapper>
               

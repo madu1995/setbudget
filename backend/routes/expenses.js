@@ -7,11 +7,22 @@ const { verifyToken, canManageEvent } = require("../middleware/auth");
 // Get expenses for an event
 router.get("/event/:eventId", verifyToken, async (req, res) => {
   try {
-    // Populate 'paidBy' to easily get the participant's name
-    const expenses = await Expense.find({ eventId: req.params.eventId })
-      .populate("paidBy", "name")
-      .sort({ date: -1 });
-    res.json(expenses);
+    const expenses = await Expense.find({ eventId: req.params.eventId }).sort({ date: -1 });
+
+    // Manually populate paidBy only for non-FUND expenses
+    const Participant = require("../models/Participant");
+    const enriched = await Promise.all(expenses.map(async (exp) => {
+      const obj = exp.toObject();
+      if (exp.paidBy === "FUND") {
+        obj.paidBy = { _id: "FUND", name: "💰 Event Fund" };
+      } else {
+        const participant = await Participant.findById(exp.paidBy).select("name");
+        obj.paidBy = participant || { _id: exp.paidBy, name: "Unknown" };
+      }
+      return obj;
+    }));
+
+    res.json(enriched);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -37,6 +48,45 @@ router.post("/", verifyToken, upload.single("receipt"), canManageEvent, async (r
     res.status(201).json(newExpense);
   } catch (err) {
     res.status(400).json({ message: err.message });
+  }
+});
+
+// Update an expense
+router.put("/:id", verifyToken, canManageEvent, async (req, res) => {
+  try {
+    const { description, amount, paidBy } = req.body;
+    
+    const updateData = {};
+    if (description) updateData.description = description;
+    if (amount !== undefined) updateData.amount = Number(amount);
+    if (paidBy) updateData.paidBy = paidBy;
+
+    const updatedExpense = await Expense.findByIdAndUpdate(
+      req.params.id, 
+      updateData, 
+      { new: true }
+    );
+
+    if (!updatedExpense) {
+      return res.status(404).json({ message: "Expense not found" });
+    }
+
+    res.json(updatedExpense);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+// Delete an expense
+router.delete("/:id", verifyToken, canManageEvent, async (req, res) => {
+  try {
+    const expense = await Expense.findByIdAndDelete(req.params.id);
+    if (!expense) {
+      return res.status(404).json({ message: "Expense not found" });
+    }
+    res.json({ message: "Expense deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 

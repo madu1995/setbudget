@@ -8,8 +8,9 @@ async function testConnection() {
     await mongoose.connect(MONGO_URI);
     console.log("SUCCESS: Connected to MongoDB");
     const User = require('./models/User');
-    const count = await User.countDocuments();
-    console.log("User count:", count);
+    const users = await User.find();
+    console.log("Users in DB:");
+    users.forEach(u => console.log(`- ${u.username} (Role: ${u.role})`));
     process.exit(0);
   } catch (err) {
     console.error("FAILURE: Connection error details:");
