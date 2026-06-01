@@ -2,7 +2,7 @@ require("dotenv").config();
 const mongoose = require("mongoose");
 const User = require("./models/User");
 
-const MONGO_URI = process.env.MONGODB_URI;
+const MONGO_URI = process.env.MONGODB_URI || "mongodb+srv://trmadu447_db_user:setbudget123@cluster0.6q0hhuy.mongodb.net/setbudget?retryWrites=true&w=majority&appName=Cluster0";
 
 mongoose.connect(MONGO_URI)
   .then(async () => {
