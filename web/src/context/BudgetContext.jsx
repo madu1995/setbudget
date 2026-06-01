@@ -159,10 +159,14 @@ export const BudgetProvider = ({ children }) => {
     }
   }
 
+  const totalFundCollected = participants.reduce((acc, p) => acc + (p.initialDeposit || 0), 0);
+  const totalSpent = expenses.reduce((acc, curr) => acc + curr.amount, 0);
+  const budgetAmount = totalFundCollected > 0 ? totalFundCollected : (activeEvent ? activeEvent.totalBudget : 0);
+
   const totals = {
-    budget: activeEvent ? activeEvent.totalBudget : 0,
-    spent: expenses.reduce((acc, curr) => acc + curr.amount, 0),
-    remaining: activeEvent ? activeEvent.totalBudget - expenses.reduce((acc, curr) => acc + curr.amount, 0) : 0,
+    budget: budgetAmount,
+    spent: totalSpent,
+    remaining: budgetAmount - totalSpent,
     participantCount: participants.length
   };
 
