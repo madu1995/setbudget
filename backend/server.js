@@ -20,6 +20,11 @@ const eventRoutes = require("./routes/events");
 const participantRoutes = require("./routes/participants");
 const expenseRoutes = require("./routes/expenses");
 
+// Public ping endpoint for pre-warming/cold-start wake-up
+app.get("/api/ping", (req, res) => {
+  res.json({ status: "ok" });
+});
+
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/events", eventRoutes);
@@ -29,6 +34,13 @@ app.use("/api/expenses", expenseRoutes);
 // MongoDB connection
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGODB_URI || "mongodb+srv://trmadu447_db_user:setbudget123@cluster0.6q0hhuy.mongodb.net/setbudget?retryWrites=true&w=majority&appName=Cluster0";
+
+if (!process.env.MONGODB_URI) {
+  console.warn("⚠️ Warning: MONGODB_URI environment variable is not defined. Falling back to default Atlas connection string.");
+}
+if (!process.env.JWT_SECRET) {
+  console.warn("⚠️ Warning: JWT_SECRET environment variable is not defined. Falling back to default secret key.");
+}
 
 const seedAdmin = async () => {
   const User = require("./models/User");
