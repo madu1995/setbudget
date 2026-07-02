@@ -1,36 +1,21 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "backend/server.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "web/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist",
-        "buildCommand": "npm run build",
-        "installCommand": "npm install"
-      }
+  "buildCommand": "cd web && npm install && npm run build",
+  "outputDirectory": "web/dist",
+  "framework": null,
+  "functions": {
+    "backend/server.js": {
+      "runtime": "@vercel/node@3"
     }
-  ],
-  "routes": [
+  },
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "backend/server.js"
+      "source": "/api/(.*)",
+      "destination": "/backend/server.js"
     },
     {
-      "src": "^/assets/(.+)$",
-      "dest": "/assets/$1"
-    },
-    {
-      "src": "^/(.+\\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|json|webp|webmanifest))$",
-      "dest": "/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/((?!backend/).*)",
+      "destination": "/index.html"
     }
   ]
 }
