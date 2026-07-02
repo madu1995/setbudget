@@ -5,7 +5,9 @@ const upload = require("../middleware/upload");
 const { verifyToken, isAdmin, canManageEvent } = require("../middleware/auth");
 const Participant = require("../models/Participant");
 const Expense = require("../models/Expense");
-
+const BorrowedItem = require("../models/BorrowedItem");
+const PendingBill = require("../models/PendingBill");
+const PublicDonation = require("../models/PublicDonation");
 // Get all events
 router.get("/", verifyToken, async (req, res) => {
   try {
@@ -291,6 +293,124 @@ router.get("/:id/settlement-report", verifyToken, async (req, res) => {
 });
 
 
+
+// Event Summary (Dynamic based on eventType)
+router.get("/:eventId/summary", verifyToken, async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const event = await Event.findById(eventId);
+    if (!event) return res.status(404).json({ message: "Event not found" });
+
+    const participants = await Participant.find({ eventId });
+    const expenses = await Expense.find({ eventId });
+
+    if (event.eventType === 'trip_party') {
+      // --- Standard Mode ---
+      const totalSpent = expenses.reduce((acc, curr) => acc + curr.amount, 0);
+      const totalExpected = participants.reduce((acc, p) => acc + (p.baseFee || p.fixedAmount || 0), 0);
+      const deficit = totalSpent - totalExpected;
+      const deficitShare = participants.length > 0 ? deficit / participants.length : 0;
+
+      const participantBalances = participants.map(p => {
+        const baseFee = p.baseFee || p.fixedAmount || 0;
+        const liability = baseFee + deficitShare;
+        const personalPaid = expenses
+          .filter(e => e.paidBy !== "FUND" && e.paidBy.toString() === p._id.toString())
+          .reduce((acc, curr) => acc + curr.amount, 0);
+        const totalPaid = (p.initialDeposit || 0) + personalPaid;
+        const balance = liability - totalPaid;
+
+        return {
+          _id: p._id,
+          name: p.name,
+          baseFee,
+          initialDeposit: p.initialDeposit || 0,
+          personalPaid,
+          totalPaid,
+          liability,
+          balance // > 0: owes money, < 0: receives refund
+        };
+      });
+
+      return res.json({
+        eventType: 'trip_party',
+        totalSpent,
+        totalExpected,
+        deficit,
+        deficitShare,
+        participantCount: participants.length,
+        balances: participantBalances
+      });
+
+    } else if (event.eventType === 'community_project') {
+      // --- Community Project Mode ---
+      const publicDonations = await PublicDonation.find({ eventId });
+      const borrowedItems = await BorrowedItem.find({ eventId });
+      const pendingBills = await PendingBill.find({ eventId, isPaid: true });
+
+      // Total Income
+      const totalDirectContributions = participants.reduce((acc, p) => acc + (p.directContribution || 0), 0);
+      const totalPublicDonations = publicDonations.reduce((acc, pd) => acc + (pd.amount || 0), 0);
+      const totalIncome = totalDirectContributions + totalPublicDonations;
+
+      // Total Expenses
+      const standardExpenses = expenses.reduce((acc, e) => acc + (e.amount || 0), 0);
+      const totalRentalFees = borrowedItems.reduce((acc, bi) => acc + (bi.rentalFee || 0), 0);
+      const totalPaidPendingBills = pendingBills.reduce((acc, pb) => acc + (pb.amount || 0), 0);
+      const totalExpenses = standardExpenses + totalRentalFees + totalPaidPendingBills;
+
+      // Net Balance
+      const netAssociationBalance = totalIncome - totalExpenses;
+
+      // Contributors
+      const financialContributors = participants
+        .filter(p => (p.directContribution || 0) > 0)
+        .map(p => ({ name: p.name, amount: p.directContribution, type: 'participant' }));
+
+      publicDonations.forEach(pd => {
+        financialContributors.push({ name: pd.donorName, amount: pd.amount, type: 'public' });
+      });
+
+      const nonFinancialContributors = participants
+        .filter(p => p.materialsContributed && p.materialsContributed.length > 0)
+        .map(p => ({ name: p.name, materials: p.materialsContributed }));
+
+      return res.json({
+        eventType: 'community_project',
+        totalIncome,
+        totalExpenses,
+        netAssociationBalance,
+        financialContributors,
+        nonFinancialContributors
+      });
+    }
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Add Borrowed Item
+router.post("/:eventId/borrowed-items", verifyToken, canManageEvent, async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const { itemName, borrowedFrom, takenBy, dateBorrowed, rentalFee } = req.body;
+    
+    const newItem = new BorrowedItem({
+      eventId,
+      itemName,
+      borrowedFrom,
+      takenBy,
+      dateBorrowed,
+      rentalFee
+    });
+    
+    await newItem.save();
+    res.status(201).json(newItem);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
 // Update event
 router.put("/:id", verifyToken, isAdmin, upload.single('coverImage'), async (req, res) => {

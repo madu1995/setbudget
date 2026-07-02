@@ -7,6 +7,7 @@ const AddEventModal = ({ isOpen, onClose, onEventAdded, eventToEdit = null }) =>
   const [formData, setFormData] = useState({
     eventName: '',
     category: '',
+    eventType: 'trip_party', // Default to trip_party
     startDate: '',
     endDate: '',
     estimatedBudget: '',
@@ -26,6 +27,7 @@ const AddEventModal = ({ isOpen, onClose, onEventAdded, eventToEdit = null }) =>
       setFormData({
         eventName: eventToEdit.name || '',
         category: eventToEdit.category || '',
+        eventType: eventToEdit.eventType || 'trip_party',
         startDate: eventToEdit.startDate ? new Date(eventToEdit.startDate).toISOString().split('T')[0] : '',
         endDate: eventToEdit.endDate ? new Date(eventToEdit.endDate).toISOString().split('T')[0] : '',
         estimatedBudget: eventToEdit.totalBudget || '',
@@ -42,6 +44,7 @@ const AddEventModal = ({ isOpen, onClose, onEventAdded, eventToEdit = null }) =>
       setFormData({
         eventName: '',
         category: '',
+        eventType: 'trip_party',
         startDate: '',
         endDate: '',
         estimatedBudget: '',
@@ -104,6 +107,7 @@ const AddEventModal = ({ isOpen, onClose, onEventAdded, eventToEdit = null }) =>
       data.append('eventName', formData.eventName);
       data.append('category', formData.category);
       data.append('mode', isDetailedMode ? 'detailed' : 'quick');
+      data.append('eventType', formData.eventType); // Send eventType
       
       if (isDetailedMode) {
         data.append('startDate', formData.startDate);
@@ -217,6 +221,12 @@ const AddEventModal = ({ isOpen, onClose, onEventAdded, eventToEdit = null }) =>
             <option value="Party">Party</option>
             <option value="Project">Project</option>
             <option value="Other">Other</option>
+          </select>
+
+          <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '4px' }}>Event Type *</label>
+          <select name="eventType" value={formData.eventType} onChange={handleChange} style={inputStyle}>
+            <option value="trip_party">Trip / Party (Standard Splitting)</option>
+            <option value="community_project">Community Project (Donations & Assets)</option>
           </select>
 
           {isDetailedMode && (
