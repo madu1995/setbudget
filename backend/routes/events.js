@@ -81,6 +81,7 @@ router.post("/add", verifyToken, isAdmin, upload.single('coverImage'), async (re
       name: eventName,
       category: category || 'Uncategorized',
       mode: mode || 'quick',
+      eventType: req.body.eventType || 'trip_party',
       ...(mode === 'detailed' && {
         startDate: startDate ? new Date(startDate) : undefined,
         endDate: endDate ? new Date(endDate) : undefined,
@@ -442,6 +443,7 @@ router.put("/:id", verifyToken, isAdmin, upload.single('coverImage'), async (req
       name: eventName,
       category: category || 'Uncategorized',
       mode: mode || 'quick',
+      eventType: req.body.eventType || 'trip_party',
       startDate: startDate ? new Date(startDate) : undefined,
       endDate: endDate ? new Date(endDate) : undefined,
       totalBudget: estimatedBudget ? parseFloat(estimatedBudget) : 0,
