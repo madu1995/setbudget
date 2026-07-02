@@ -19,6 +19,10 @@ const userRoutes = require("./routes/users");
 const eventRoutes = require("./routes/events");
 const participantRoutes = require("./routes/participants");
 const expenseRoutes = require("./routes/expenses");
+const pendingBillRoutes = require("./routes/pendingBills");
+const borrowedItemRoutes = require("./routes/borrowedItems");
+const taskRoutes = require("./routes/tasks");
+const publicDonationRoutes = require("./routes/publicDonations");
 
 // Public ping endpoint for pre-warming/cold-start wake-up
 app.get("/api/ping", (req, res) => {
@@ -30,6 +34,10 @@ app.use("/api/users", userRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/participants", participantRoutes);
 app.use("/api/expenses", expenseRoutes);
+app.use("/api/pending-bills", pendingBillRoutes);
+app.use("/api/borrowed-items", borrowedItemRoutes);
+app.use("/api/tasks", taskRoutes);
+app.use("/api/public-donations", publicDonationRoutes);
 
 // MongoDB connection
 const PORT = process.env.PORT || 5000;

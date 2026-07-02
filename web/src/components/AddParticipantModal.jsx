@@ -11,6 +11,8 @@ const AddParticipantModal = ({ isOpen, onClose, onParticipantAdded, onParticipan
     paymentMode: 'Fixed Amount',
     baseFee: '',
     initialDeposit: '',
+    directContribution: '',
+    materialsContributed: [],
   });
   
   const [error, setError] = useState('');
@@ -24,6 +26,8 @@ const AddParticipantModal = ({ isOpen, onClose, onParticipantAdded, onParticipan
         paymentMode: participantToEdit.paymentMode || 'Fixed Amount',
         baseFee: participantToEdit.baseFee || participantToEdit.fixedAmount || '',
         initialDeposit: participantToEdit.initialDeposit || '',
+        directContribution: participantToEdit.directContribution || '',
+        materialsContributed: participantToEdit.materialsContributed || [],
       });
     } else if (isOpen) {
       setFormData({
@@ -32,6 +36,8 @@ const AddParticipantModal = ({ isOpen, onClose, onParticipantAdded, onParticipan
         paymentMode: 'Fixed Amount',
         baseFee: '',
         initialDeposit: '',
+        directContribution: '',
+        materialsContributed: [],
       });
     }
   }, [participantToEdit, isOpen]);
@@ -42,6 +48,24 @@ const AddParticipantModal = ({ isOpen, onClose, onParticipantAdded, onParticipan
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
     if (error) setError('');
+  };
+
+  const handleMaterialChange = (index, field, value) => {
+    const updated = [...formData.materialsContributed];
+    updated[index][field] = value;
+    setFormData({ ...formData, materialsContributed: updated });
+  };
+
+  const addMaterialField = () => {
+    setFormData({
+      ...formData,
+      materialsContributed: [...formData.materialsContributed, { itemName: '', quantity: '', notes: '' }]
+    });
+  };
+
+  const removeMaterialField = (index) => {
+    const updated = formData.materialsContributed.filter((_, i) => i !== index);
+    setFormData({ ...formData, materialsContributed: updated });
   };
 
   const validatePhone = (phone) => {
@@ -74,6 +98,8 @@ const AddParticipantModal = ({ isOpen, onClose, onParticipantAdded, onParticipan
           baseFee: formData.baseFee,
           fixedAmount: formData.baseFee, // Keep for backward compatibility
           initialDeposit: formData.initialDeposit === '' ? 0 : Number(formData.initialDeposit),
+          directContribution: formData.directContribution === '' ? 0 : Number(formData.directContribution),
+          materialsContributed: formData.materialsContributed.filter(m => m.itemName.trim() !== '')
         });
       } else {
         await onParticipantAdded(
@@ -81,7 +107,9 @@ const AddParticipantModal = ({ isOpen, onClose, onParticipantAdded, onParticipan
           formData.phone,
           formData.paymentMode,
           formData.baseFee,
-          formData.initialDeposit === '' ? 0 : Number(formData.initialDeposit)
+          formData.initialDeposit === '' ? 0 : Number(formData.initialDeposit),
+          formData.directContribution === '' ? 0 : Number(formData.directContribution),
+          formData.materialsContributed.filter(m => m.itemName.trim() !== '')
         );
       }
       onClose();
@@ -152,41 +180,104 @@ const AddParticipantModal = ({ isOpen, onClose, onParticipantAdded, onParticipan
           <label style={labelStyle}>Phone Number (Optional)</label>
           <input type="text" name="phone" value={formData.phone} onChange={handleChange} style={inputStyle} placeholder="07XXXXXXXX" />
 
-          {/* Common Fund Deposit — always visible */}
-          <div style={depositSectionStyle}>
-            <label style={{ ...labelStyle, color: '#1d4ed8', marginBottom: '4px' }}>
-              💰 Initial Fund Deposit (LKR)
-            </label>
-            <p style={{ fontSize: '0.78rem', color: '#6B7280', margin: '0 0 8px 0' }}>
-              Amount contributed to the common fund before the event.
-            </p>
-            <input
-              type="number"
-              name="initialDeposit"
-              value={formData.initialDeposit}
-              onChange={handleChange}
-              style={{ ...inputStyle, marginBottom: 0, backgroundColor: 'white' }}
-              placeholder="0"
-              min="0"
-            />
-          </div>
-
-          {isModerator(activeEvent) && (
+          {activeEvent?.eventType === 'community_project' ? (
             <>
-              <label style={labelStyle}>Target Contribution (Base Fee) *</label>
-              <p style={{ fontSize: '0.78rem', color: '#6B7280', margin: '0 0 8px 0' }}>
-                Base amount for this participant (e.g. 2500 for drinkers, 1000 for non-drinkers).
-              </p>
-              <input
-                type="number"
-                name="baseFee"
-                value={formData.baseFee}
-                onChange={handleChange}
-                style={inputStyle}
-                placeholder="e.g. 2500"
-                min="0"
-                required
-              />
+              <div style={{ ...depositSectionStyle, backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' }}>
+                <label style={{ ...labelStyle, color: '#15803d', marginBottom: '4px' }}>
+                  🤝 Direct Contribution (LKR)
+                </label>
+                <p style={{ fontSize: '0.78rem', color: '#6B7280', margin: '0 0 8px 0' }}>
+                  Financial donation towards the community project.
+                </p>
+                <input
+                  type="number"
+                  name="directContribution"
+                  value={formData.directContribution}
+                  onChange={handleChange}
+                  style={{ ...inputStyle, marginBottom: 0, backgroundColor: 'white' }}
+                  placeholder="0"
+                  min="0"
+                />
+              </div>
+              
+              <div style={{ marginTop: '15px', marginBottom: '15px' }}>
+                <label style={labelStyle}>Materials Contributed</label>
+                <p style={{ fontSize: '0.78rem', color: '#6B7280', margin: '0 0 8px 0' }}>
+                  E.g., Bamboo, Bulbs, Paint
+                </p>
+                {formData.materialsContributed.map((m, index) => (
+                  <div key={index} style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'center' }}>
+                    <input 
+                      type="text" 
+                      placeholder="Item Name" 
+                      value={m.itemName} 
+                      onChange={(e) => handleMaterialChange(index, 'itemName', e.target.value)} 
+                      style={{ ...inputStyle, marginBottom: 0, padding: '8px', flex: 2 }} 
+                    />
+                    <input 
+                      type="text" 
+                      placeholder="Qty" 
+                      value={m.quantity} 
+                      onChange={(e) => handleMaterialChange(index, 'quantity', e.target.value)} 
+                      style={{ ...inputStyle, marginBottom: 0, padding: '8px', flex: 1 }} 
+                    />
+                    <button 
+                      type="button" 
+                      onClick={() => removeMaterialField(index)} 
+                      style={{ background: '#DC2626', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 12px', cursor: 'pointer' }}
+                    >
+                      &times;
+                    </button>
+                  </div>
+                ))}
+                <button 
+                  type="button" 
+                  onClick={addMaterialField} 
+                  style={{ background: 'transparent', color: '#15803d', border: '1px dashed #15803d', borderRadius: '6px', padding: '8px', cursor: 'pointer', width: '100%', fontSize: '0.85rem' }}
+                >
+                  + Add Material
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Common Fund Deposit — always visible for Trip/Party */}
+              <div style={depositSectionStyle}>
+                <label style={{ ...labelStyle, color: '#1d4ed8', marginBottom: '4px' }}>
+                  💰 Initial Fund Deposit (LKR)
+                </label>
+                <p style={{ fontSize: '0.78rem', color: '#6B7280', margin: '0 0 8px 0' }}>
+                  Amount contributed to the common fund before the event.
+                </p>
+                <input
+                  type="number"
+                  name="initialDeposit"
+                  value={formData.initialDeposit}
+                  onChange={handleChange}
+                  style={{ ...inputStyle, marginBottom: 0, backgroundColor: 'white' }}
+                  placeholder="0"
+                  min="0"
+                />
+              </div>
+
+              {isModerator(activeEvent) && (
+                <>
+                  <label style={labelStyle}>Target Contribution (Base Fee) *</label>
+                  <p style={{ fontSize: '0.78rem', color: '#6B7280', margin: '0 0 8px 0' }}>
+                    Base amount for this participant (e.g. 2500 for drinkers, 1000 for non-drinkers).
+                  </p>
+                  <input
+                    type="number"
+                    name="baseFee"
+                    value={formData.baseFee}
+                    onChange={handleChange}
+                    style={inputStyle}
+                    placeholder="e.g. 2500"
+                    min="0"
+                    required
+                  />
+                </>
+              )}
             </>
           )}
 
