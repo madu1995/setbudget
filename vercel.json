@@ -8,7 +8,11 @@
     {
       "src": "web/package.json",
       "use": "@vercel/static-build",
-      "config": { "distDir": "dist" }
+      "config": {
+        "distDir": "dist",
+        "buildCommand": "npm run build",
+        "installCommand": "npm install"
+      }
     }
   ],
   "routes": [
@@ -17,7 +21,12 @@
       "dest": "backend/server.js"
     },
     {
-      "handle": "filesystem"
+      "src": "^/assets/(.+)$",
+      "dest": "/assets/$1"
+    },
+    {
+      "src": "^/(.+\\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|json|webp|webmanifest))$",
+      "dest": "/$1"
     },
     {
       "src": "/(.*)",
