@@ -95,8 +95,8 @@ const AddParticipantModal = ({ isOpen, onClose, onParticipantAdded, onParticipan
           name: formData.name,
           phone: formData.phone,
           paymentMode: formData.paymentMode,
-          baseFee: formData.baseFee,
-          fixedAmount: formData.baseFee, // Keep for backward compatibility
+          baseFee: formData.baseFee === '' ? 0 : Number(formData.baseFee),
+          fixedAmount: formData.baseFee === '' ? 0 : Number(formData.baseFee), // Keep for backward compatibility
           initialDeposit: formData.initialDeposit === '' ? 0 : Number(formData.initialDeposit),
           directContribution: formData.directContribution === '' ? 0 : Number(formData.directContribution),
           materialsContributed: formData.materialsContributed.filter(m => m.itemName.trim() !== '')
@@ -106,7 +106,7 @@ const AddParticipantModal = ({ isOpen, onClose, onParticipantAdded, onParticipan
           formData.name,
           formData.phone,
           formData.paymentMode,
-          formData.baseFee,
+          formData.baseFee === '' ? 0 : Number(formData.baseFee),
           formData.initialDeposit === '' ? 0 : Number(formData.initialDeposit),
           formData.directContribution === '' ? 0 : Number(formData.directContribution),
           formData.materialsContributed.filter(m => m.itemName.trim() !== '')
