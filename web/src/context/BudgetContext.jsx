@@ -18,6 +18,9 @@ export const BudgetProvider = ({ children }) => {
   const [borrowedItems, setBorrowedItems] = useState([]);
   const [publicDonations, setPublicDonations] = useState([]);
   const [summaryData, setSummaryData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
 
   useEffect(() => {
     if (user && !user.requiresPasswordChange) {
