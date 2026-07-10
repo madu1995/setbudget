@@ -11,18 +11,18 @@
       "config": { "distDir": "dist" }
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "/backend/server.js"
+      "source": "/api/(.*)",
+      "destination": "/backend/server.js"
     },
     {
-      "src": "/(.*\\..*)",
-      "dest": "/web/$1"
+      "source": "/(.*\\.(?:png|jpg|jpeg|svg|ico|json|css|js|woff|woff2|ttf|eot))$",
+      "destination": "/web/$1"
     },
     {
-      "src": "/(.*)",
-      "dest": "/web/index.html"
+      "source": "/(.*)",
+      "destination": "/web/index.html"
     }
   ]
 }

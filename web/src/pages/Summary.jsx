@@ -244,7 +244,7 @@ export default function Summary() {
 
       doc.setTextColor(0);
 
-      if (summaryData.eventType === 'community_project') {
+      if (activeEvent.eventType === 'community_project') {
         doc.setFontSize(14);
         doc.text('Financial Summary', 14, yPos); yPos += 8;
         doc.setFontSize(11);
@@ -325,7 +325,7 @@ export default function Summary() {
           <h3>No event selected.</h3>
           <p>Please select an event from the dropdown above.</p>
         </Card>
-      ) : summaryData.eventType === 'community_project' ? (
+      ) : activeEvent.eventType === 'community_project' ? (
         <>
           {/* Community Project Dashboard */}
           <Card>
