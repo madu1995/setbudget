@@ -258,6 +258,7 @@ export const BudgetProvider = ({ children }) => {
     try {
       const res = await axios.post(`${API_URL}/events/${activeEvent._id}/borrowed-items`, itemData);
       setBorrowedItems([...borrowedItems, res.data]);
+      fetchExpenses(activeEvent._id);
       fetchSummary(activeEvent._id);
     } catch (err) {
       console.error(err);
@@ -269,6 +270,8 @@ export const BudgetProvider = ({ children }) => {
     try {
       const res = await axios.patch(`${API_URL}/borrowed-items/${itemId}/return`);
       setBorrowedItems(borrowedItems.map(i => i._id === itemId ? res.data.item : i));
+      fetchExpenses(activeEvent._id);
+      fetchSummary(activeEvent._id);
     } catch (err) {
       console.error(err);
     }
@@ -301,9 +304,15 @@ export const BudgetProvider = ({ children }) => {
   const totalPublicDonations = publicDonations.reduce((acc, pd) => acc + (pd.amount || 0), 0);
   const totalFundCollected = totalDeposits + totalDirectContributions + totalPublicDonations;
 
-  const totalSpent = expenses.reduce((acc, curr) => acc + curr.amount, 0) +
-    borrowedItems.reduce((acc, bi) => acc + (bi.rentalFee || 0), 0) +
-    pendingBills.filter(pb => pb.isPaid).reduce((acc, pb) => acc + (pb.amount || 0), 0);
+  const standardExpenses = expenses.reduce((acc, curr) => acc + curr.amount, 0);
+  const unrecordedRentalFees = borrowedItems
+    .filter(bi => (bi.rentalFee || 0) > 0 && !expenses.some(e => e.description && e.description.includes(`Rental Fee: ${bi.itemName}`)))
+    .reduce((acc, bi) => acc + (bi.rentalFee || 0), 0);
+  const unrecordedBillFees = pendingBills
+    .filter(pb => pb.isPaid && (pb.amount || 0) > 0 && !expenses.some(e => e.description && e.description.includes(`Paid Bill: ${pb.vendorName}`)))
+    .reduce((acc, pb) => acc + (pb.amount || 0), 0);
+
+  const totalSpent = standardExpenses + unrecordedRentalFees + unrecordedBillFees;
 
   const isCommunity = activeEvent?.eventType === 'community_project';
   const budgetAmount = isCommunity

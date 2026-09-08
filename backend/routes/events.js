@@ -16,14 +16,29 @@ router.get("/", verifyToken, async (req, res) => {
     // Enrich events with extra info
     const enrichedEvents = await Promise.all(events.map(async (event) => {
       const participantCount = await Participant.countDocuments({ eventId: event._id });
-      
+      const participants = await Participant.find({ eventId: event._id });
       const expenses = await Expense.find({ eventId: event._id });
-      const totalSpent = expenses.reduce((acc, curr) => acc + curr.amount, 0);
+      const borrowedItems = await BorrowedItem.find({ eventId: event._id });
+      const pendingBills = await PendingBill.find({ eventId: event._id, isPaid: true });
+
+      const standardExpenses = expenses.reduce((acc, curr) => acc + curr.amount, 0);
+      const unrecordedRentalFees = borrowedItems
+        .filter(bi => (bi.rentalFee || 0) > 0 && !expenses.some(e => e.description && e.description.includes(`Rental Fee: ${bi.itemName}`)))
+        .reduce((acc, bi) => acc + (bi.rentalFee || 0), 0);
+      const unrecordedBillFees = pendingBills
+        .filter(pb => (pb.amount || 0) > 0 && !expenses.some(e => e.description && e.description.includes(`Paid Bill: ${pb.vendorName}`)))
+        .reduce((acc, pb) => acc + (pb.amount || 0), 0);
+
+      const totalSpent = standardExpenses + unrecordedRentalFees + unrecordedBillFees;
+      const totalDirectContributions = participants.reduce((acc, p) => acc + (p.directContribution || 0), 0);
+      const totalDeposits = participants.reduce((acc, p) => acc + (p.initialDeposit || 0), 0);
       
       return {
         ...event.toObject(),
         participantCount,
-        totalSpent
+        totalSpent,
+        totalDirectContributions,
+        totalDeposits
       };
     }));
 
@@ -356,9 +371,13 @@ router.get("/:eventId/summary", verifyToken, async (req, res) => {
 
       // Total Expenses
       const standardExpenses = expenses.reduce((acc, e) => acc + (e.amount || 0), 0);
-      const totalRentalFees = borrowedItems.reduce((acc, bi) => acc + (bi.rentalFee || 0), 0);
-      const totalPaidPendingBills = pendingBills.reduce((acc, pb) => acc + (pb.amount || 0), 0);
-      const totalExpenses = standardExpenses + totalRentalFees + totalPaidPendingBills;
+      const unrecordedRentalFees = borrowedItems
+        .filter(bi => (bi.rentalFee || 0) > 0 && !expenses.some(e => e.description && e.description.includes(`Rental Fee: ${bi.itemName}`)))
+        .reduce((acc, bi) => acc + (bi.rentalFee || 0), 0);
+      const unrecordedBillFees = pendingBills
+        .filter(pb => (pb.amount || 0) > 0 && !expenses.some(e => e.description && e.description.includes(`Paid Bill: ${pb.vendorName}`)))
+        .reduce((acc, pb) => acc + (pb.amount || 0), 0);
+      const totalExpenses = standardExpenses + unrecordedRentalFees + unrecordedBillFees;
 
       // Net Balance
       const netAssociationBalance = totalIncome - totalExpenses;
@@ -396,6 +415,7 @@ router.post("/:eventId/borrowed-items", verifyToken, canManageEvent, async (req,
   try {
     const { eventId } = req.params;
     const { itemName, borrowedFrom, takenBy, dateBorrowed, rentalFee } = req.body;
+    const parsedRentalFee = rentalFee ? parseFloat(rentalFee) : 0;
     
     const newItem = new BorrowedItem({
       eventId,
@@ -403,10 +423,23 @@ router.post("/:eventId/borrowed-items", verifyToken, canManageEvent, async (req,
       borrowedFrom,
       takenBy,
       dateBorrowed,
-      rentalFee
+      rentalFee: parsedRentalFee
     });
     
     await newItem.save();
+
+    // Automatically create an Expense record if there is a rental fee
+    if (parsedRentalFee > 0) {
+      const rentalExpense = new Expense({
+        eventId,
+        description: `Rental Fee: ${itemName}${borrowedFrom ? ` (from ${borrowedFrom})` : ''}`,
+        amount: parsedRentalFee,
+        paidBy: "FUND",
+        date: dateBorrowed ? new Date(dateBorrowed) : new Date()
+      });
+      await rentalExpense.save();
+    }
+
     res.status(201).json(newItem);
   } catch (err) {
     res.status(500).json({ message: err.message });
