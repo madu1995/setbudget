@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const BorrowedItem = require("../models/BorrowedItem");
+const Expense = require("../models/Expense");
 const { verifyToken, isAdmin } = require("../middleware/auth"); // Adjust based on permissions
 
 // Get borrowed items for an event
@@ -27,6 +28,24 @@ router.patch("/:itemId/return", verifyToken, async (req, res) => {
     item.dateReturned = new Date();
     
     await item.save();
+
+    // Ensure expense is recorded if there is a rental fee and not already tracked
+    if (item.rentalFee > 0) {
+      const existingExpense = await Expense.findOne({
+        eventId: item.eventId,
+        description: new RegExp(`Rental Fee: ${item.itemName}`, 'i')
+      });
+      if (!existingExpense) {
+        const rentalExpense = new Expense({
+          eventId: item.eventId,
+          description: `Rental Fee: ${item.itemName}${item.borrowedFrom ? ` (from ${item.borrowedFrom})` : ''}`,
+          amount: item.rentalFee,
+          paidBy: "FUND",
+          date: item.dateReturned || new Date()
+        });
+        await rentalExpense.save();
+      }
+    }
 
     res.json({ message: "Item marked as returned", item });
   } catch (err) {

@@ -258,6 +258,7 @@ export const BudgetProvider = ({ children }) => {
     try {
       const res = await axios.post(`${API_URL}/events/${activeEvent._id}/borrowed-items`, itemData);
       setBorrowedItems([...borrowedItems, res.data]);
+      fetchExpenses(activeEvent._id);
       fetchSummary(activeEvent._id);
     } catch (err) {
       console.error(err);
@@ -269,6 +270,8 @@ export const BudgetProvider = ({ children }) => {
     try {
       const res = await axios.patch(`${API_URL}/borrowed-items/${itemId}/return`);
       setBorrowedItems(borrowedItems.map(i => i._id === itemId ? res.data.item : i));
+      fetchExpenses(activeEvent._id);
+      fetchSummary(activeEvent._id);
     } catch (err) {
       console.error(err);
     }
@@ -296,12 +299,32 @@ export const BudgetProvider = ({ children }) => {
     }
   }
 
-  const totalFundCollected = participants.reduce((acc, p) => acc + (p.initialDeposit || 0), 0);
-  const totalSpent = expenses.reduce((acc, curr) => acc + curr.amount, 0);
-  const budgetAmount = totalFundCollected > 0 ? totalFundCollected : (activeEvent ? activeEvent.totalBudget : 0);
+  const totalDirectContributions = participants.reduce((acc, p) => acc + (p.directContribution || 0), 0);
+  const totalDeposits = participants.reduce((acc, p) => acc + (p.initialDeposit || 0), 0);
+  const totalPublicDonations = publicDonations.reduce((acc, pd) => acc + (pd.amount || 0), 0);
+  const totalFundCollected = totalDeposits + totalDirectContributions + totalPublicDonations;
+
+  const standardExpenses = expenses.reduce((acc, curr) => acc + curr.amount, 0);
+  const unrecordedRentalFees = borrowedItems
+    .filter(bi => (bi.rentalFee || 0) > 0 && !expenses.some(e => e.description && e.description.includes(`Rental Fee: ${bi.itemName}`)))
+    .reduce((acc, bi) => acc + (bi.rentalFee || 0), 0);
+  const unrecordedBillFees = pendingBills
+    .filter(pb => pb.isPaid && (pb.amount || 0) > 0 && !expenses.some(e => e.description && e.description.includes(`Paid Bill: ${pb.vendorName}`)))
+    .reduce((acc, pb) => acc + (pb.amount || 0), 0);
+
+  const totalSpent = standardExpenses + unrecordedRentalFees + unrecordedBillFees;
+
+  const isCommunity = activeEvent?.eventType === 'community_project';
+  const budgetAmount = isCommunity
+    ? totalFundCollected
+    : (totalFundCollected > 0 ? totalFundCollected : (activeEvent ? activeEvent.totalBudget : 0));
 
   const totals = {
     budget: budgetAmount,
+    totalFundCollected,
+    totalDirectContributions,
+    totalDeposits,
+    totalPublicDonations,
     spent: totalSpent,
     remaining: budgetAmount - totalSpent,
     participantCount: participants.length

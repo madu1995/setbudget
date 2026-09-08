@@ -15,7 +15,7 @@ router.get("/event/:eventId", verifyToken, async (req, res) => {
 
 // Add new participant
 router.post("/", verifyToken, canManageEvent, async (req, res) => {
-  const { name, phone, eventId, paymentMode, fixedAmount, baseFee, initialDeposit } = req.body;
+  const { name, phone, eventId, paymentMode, fixedAmount, baseFee, initialDeposit, directContribution, materialsContributed } = req.body;
 
   if (!name) {
     return res.status(400).json({ message: "Name is required" });
@@ -37,9 +37,11 @@ router.post("/", verifyToken, canManageEvent, async (req, res) => {
     phone,
     eventId,
     paymentMode: paymentMode || "Full Share",
-    fixedAmount: fixedAmount ? parseFloat(fixedAmount) : 0,
-    baseFee: baseFee ? parseFloat(baseFee) : (fixedAmount ? parseFloat(fixedAmount) : 0),
-    initialDeposit: initialDeposit ? parseFloat(initialDeposit) : 0,
+    fixedAmount: fixedAmount !== undefined && fixedAmount !== "" ? parseFloat(fixedAmount) : 0,
+    baseFee: baseFee !== undefined && baseFee !== "" ? parseFloat(baseFee) : (fixedAmount ? parseFloat(fixedAmount) : 0),
+    initialDeposit: initialDeposit !== undefined && initialDeposit !== "" ? parseFloat(initialDeposit) : 0,
+    directContribution: directContribution !== undefined && directContribution !== "" ? parseFloat(directContribution) : 0,
+    materialsContributed: Array.isArray(materialsContributed) ? materialsContributed : [],
   });
 
   try {
@@ -54,15 +56,17 @@ router.post("/", verifyToken, canManageEvent, async (req, res) => {
 router.put("/:id/event/:eventId", verifyToken, canManageEvent, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, phone, paymentMode, fixedAmount, baseFee, initialDeposit } = req.body;
+    const { name, phone, paymentMode, fixedAmount, baseFee, initialDeposit, directContribution, materialsContributed } = req.body;
 
     const updateData = {};
     if (name) updateData.name = name;
     if (phone !== undefined) updateData.phone = phone;
     if (paymentMode) updateData.paymentMode = paymentMode;
-    if (fixedAmount !== undefined) updateData.fixedAmount = parseFloat(fixedAmount);
-    if (baseFee !== undefined) updateData.baseFee = parseFloat(baseFee);
-    if (initialDeposit !== undefined) updateData.initialDeposit = parseFloat(initialDeposit);
+    if (fixedAmount !== undefined) updateData.fixedAmount = parseFloat(fixedAmount) || 0;
+    if (baseFee !== undefined) updateData.baseFee = parseFloat(baseFee) || 0;
+    if (initialDeposit !== undefined) updateData.initialDeposit = parseFloat(initialDeposit) || 0;
+    if (directContribution !== undefined) updateData.directContribution = parseFloat(directContribution) || 0;
+    if (materialsContributed !== undefined) updateData.materialsContributed = Array.isArray(materialsContributed) ? materialsContributed : [];
 
     const updatedParticipant = await Participant.findByIdAndUpdate(id, updateData, { new: true });
     if (!updatedParticipant) {

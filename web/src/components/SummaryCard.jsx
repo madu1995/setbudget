@@ -57,14 +57,16 @@ export default function SummaryCard() {
 
   if (!activeEvent) return null;
 
+  const isCommunity = activeEvent.eventType === 'community_project';
+
   return (
     <BlueCard>
       <CardHeader>
-        {activeEvent.name} 🌿
+        {activeEvent.name} {isCommunity ? '🤝' : '🌿'}
       </CardHeader>
       <MetricsContainer>
         <MetricRow>
-          <MetricLabel>Total Budget</MetricLabel>
+          <MetricLabel>{isCommunity ? 'Total Raised Funds' : 'Total Budget'}</MetricLabel>
           <MetricValue>LKR {totals.budget.toLocaleString(undefined, { minimumFractionDigits: 2 })}</MetricValue>
         </MetricRow>
         <MetricRow>
@@ -72,7 +74,7 @@ export default function SummaryCard() {
           <MetricValue>LKR {totals.spent.toLocaleString(undefined, { minimumFractionDigits: 2 })}</MetricValue>
         </MetricRow>
         <MetricRow>
-          <MetricLabel>Participants</MetricLabel>
+          <MetricLabel>{isCommunity ? 'Contributors' : 'Participants'}</MetricLabel>
           <MetricValue>{totals.participantCount}</MetricValue>
         </MetricRow>
       </MetricsContainer>

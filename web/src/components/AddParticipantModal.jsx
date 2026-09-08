@@ -24,10 +24,16 @@ const AddParticipantModal = ({ isOpen, onClose, onParticipantAdded, onParticipan
         name: participantToEdit.name || '',
         phone: participantToEdit.phone || '',
         paymentMode: participantToEdit.paymentMode || 'Fixed Amount',
-        baseFee: participantToEdit.baseFee || participantToEdit.fixedAmount || '',
-        initialDeposit: participantToEdit.initialDeposit || '',
-        directContribution: participantToEdit.directContribution || '',
-        materialsContributed: participantToEdit.materialsContributed || [],
+        baseFee: participantToEdit.baseFee !== undefined && participantToEdit.baseFee !== null ? participantToEdit.baseFee : (participantToEdit.fixedAmount || ''),
+        initialDeposit: participantToEdit.initialDeposit !== undefined && participantToEdit.initialDeposit !== null ? participantToEdit.initialDeposit : '',
+        directContribution: participantToEdit.directContribution !== undefined && participantToEdit.directContribution !== null ? participantToEdit.directContribution : '',
+        materialsContributed: Array.isArray(participantToEdit.materialsContributed)
+          ? participantToEdit.materialsContributed.map(m => ({
+              itemName: m.itemName || '',
+              quantity: m.quantity || '',
+              notes: m.notes || ''
+            }))
+          : [],
       });
     } else if (isOpen) {
       setFormData({
@@ -51,8 +57,12 @@ const AddParticipantModal = ({ isOpen, onClose, onParticipantAdded, onParticipan
   };
 
   const handleMaterialChange = (index, field, value) => {
-    const updated = [...formData.materialsContributed];
-    updated[index][field] = value;
+    const updated = formData.materialsContributed.map((item, i) => {
+      if (i === index) {
+        return { ...item, [field]: value };
+      }
+      return item;
+    });
     setFormData({ ...formData, materialsContributed: updated });
   };
 
@@ -90,26 +100,38 @@ const AddParticipantModal = ({ isOpen, onClose, onParticipantAdded, onParticipan
     setIsSubmitting(true);
 
     try {
+      const cleanMaterials = formData.materialsContributed
+        .filter(m => m && m.itemName && m.itemName.trim() !== '')
+        .map(m => ({
+          itemName: m.itemName.trim(),
+          quantity: m.quantity ? m.quantity.trim() : '',
+          notes: m.notes ? m.notes.trim() : ''
+        }));
+
+      const parsedDirectContribution = formData.directContribution === '' ? 0 : Number(formData.directContribution);
+      const parsedInitialDeposit = formData.initialDeposit === '' ? 0 : Number(formData.initialDeposit);
+      const parsedBaseFee = formData.baseFee === '' ? 0 : Number(formData.baseFee);
+
       if (participantToEdit) {
         await onParticipantUpdated(participantToEdit._id, {
-          name: formData.name,
-          phone: formData.phone,
+          name: formData.name.trim(),
+          phone: formData.phone ? formData.phone.trim() : '',
           paymentMode: formData.paymentMode,
-          baseFee: formData.baseFee === '' ? 0 : Number(formData.baseFee),
-          fixedAmount: formData.baseFee === '' ? 0 : Number(formData.baseFee), // Keep for backward compatibility
-          initialDeposit: formData.initialDeposit === '' ? 0 : Number(formData.initialDeposit),
-          directContribution: formData.directContribution === '' ? 0 : Number(formData.directContribution),
-          materialsContributed: formData.materialsContributed.filter(m => m.itemName.trim() !== '')
+          baseFee: parsedBaseFee,
+          fixedAmount: parsedBaseFee,
+          initialDeposit: parsedInitialDeposit,
+          directContribution: parsedDirectContribution,
+          materialsContributed: cleanMaterials
         });
       } else {
         await onParticipantAdded(
-          formData.name,
-          formData.phone,
+          formData.name.trim(),
+          formData.phone ? formData.phone.trim() : '',
           formData.paymentMode,
-          formData.baseFee === '' ? 0 : Number(formData.baseFee),
-          formData.initialDeposit === '' ? 0 : Number(formData.initialDeposit),
-          formData.directContribution === '' ? 0 : Number(formData.directContribution),
-          formData.materialsContributed.filter(m => m.itemName.trim() !== '')
+          parsedBaseFee,
+          parsedInitialDeposit,
+          parsedDirectContribution,
+          cleanMaterials
         );
       }
       onClose();

@@ -171,6 +171,7 @@ const CheckboxRow = styled.label`
 export default function Summary() {
   const { 
     events, activeEvent, selectEvent, summaryData,
+    participants, expenses,
     tasks, pendingBills, borrowedItems, publicDonations,
     updateTaskStatus, payPendingBill, returnBorrowedItem,
     addTask, addPendingBill, addBorrowedItem, addPublicDonation
@@ -178,10 +179,13 @@ export default function Summary() {
 
   const [showPDFModal, setShowPDFModal] = useState(false);
   const [pdfOptions, setPdfOptions] = useState({
-    financialContributors: true,
+    memberContributions: true,
     publicDonations: true,
+    shopBills: true,
+    borrowedItems: true,
+    tasks: true,
     leftoverAssets: true,
-    settledExpenses: true
+    generalExpenses: true
   });
 
   // Forms State
@@ -225,69 +229,356 @@ export default function Summary() {
 
     try {
       const doc = new jsPDF();
-      doc.setFontSize(20);
-      doc.text(`${activeEvent.eventType === 'community_project' ? 'Project Report' : 'Settlement Report'}: ${activeEvent.name}`, 14, 22);
+      const reportTitle = activeEvent.eventType === 'community_project' ? 'Project Financial Report' : 'Event Settlement Report';
+      
+      // Title
+      doc.setFontSize(18);
+      doc.setTextColor(33, 37, 41);
+      doc.text(`${reportTitle}: ${activeEvent.name}`, 14, 20);
 
-      doc.setFontSize(10);
-      doc.setTextColor(100);
-      let yPos = 28;
+      // Sub-details
+      doc.setFontSize(9);
+      doc.setTextColor(108, 117, 125);
+      let yPos = 26;
 
       if (activeEvent.startDate) {
         const dateStr = new Date(activeEvent.startDate).toLocaleDateString() +
           (activeEvent.endDate ? ` - ${new Date(activeEvent.endDate).toLocaleDateString()}` : '');
-        doc.text(`Date: ${dateStr}`, 14, yPos); yPos += 6;
+        doc.text(`Event Date: ${dateStr}`, 14, yPos);
+        yPos += 5;
       }
       if (activeEvent.location) {
-        doc.text(`Location: ${activeEvent.location}`, 14, yPos); yPos += 6;
+        doc.text(`Location: ${activeEvent.location}`, 14, yPos);
+        yPos += 5;
       }
-      doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, yPos); yPos += 10;
+      doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, yPos);
+      yPos += 8;
 
-      doc.setTextColor(0);
+      const checkAddPage = (neededSpace = 25) => {
+        if (yPos + neededSpace > 280) {
+          doc.addPage();
+          yPos = 20;
+        }
+      };
 
       if (activeEvent.eventType === 'community_project') {
-        doc.setFontSize(14);
-        doc.text('Financial Summary', 14, yPos); yPos += 8;
-        doc.setFontSize(11);
-        doc.text(`Total Income: LKR ${fmt(summaryData.totalIncome)}`, 14, yPos); yPos += 6;
-        doc.text(`Total Expenses: LKR ${fmt(summaryData.totalExpenses)}`, 14, yPos); yPos += 6;
-        doc.text(`Net Association Balance: LKR ${fmt(summaryData.netAssociationBalance)}`, 14, yPos); yPos += 10;
+        const memberContribTotal = participants.reduce((acc, p) => acc + (p.directContribution || 0), 0);
+        const publicDonationsTotal = publicDonations.reduce((acc, pd) => acc + (pd.amount || 0), 0);
+        const totalIncome = memberContribTotal + publicDonationsTotal;
+        const totalExpenses = summaryData?.totalExpenses !== undefined ? summaryData.totalExpenses : expenses.reduce((acc, e) => acc + (e.amount || 0), 0);
+        const netBalance = totalIncome - totalExpenses;
 
-        if (pdfOptions.financialContributors && summaryData.financialContributors.length > 0) {
-          doc.setFontSize(14);
-          doc.text('Financial Contributors', 14, yPos); yPos += 6;
-          const rows = summaryData.financialContributors.map(c => [c.name, c.type, `LKR ${fmt(c.amount)}`]);
-          autoTable(doc, { head: [['Name', 'Type', 'Amount']], body: rows, startY: yPos });
+        // Financial Summary Box / Header
+        checkAddPage(45);
+        doc.setFontSize(13);
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(17, 24, 39);
+        doc.text('Financial Summary', 14, yPos);
+        yPos += 6;
+
+        doc.setFontSize(10);
+        doc.setFont(undefined, 'normal');
+        doc.setTextColor(75, 85, 99);
+        doc.text(`* Member Contributions Total: LKR ${fmt(memberContribTotal)}`, 18, yPos); yPos += 5;
+        doc.text(`* Public Donations Total: LKR ${fmt(publicDonationsTotal)}`, 18, yPos); yPos += 5;
+
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(21, 128, 61);
+        doc.text(`Total Income: LKR ${fmt(totalIncome)}`, 18, yPos); yPos += 6;
+
+        doc.setFont(undefined, 'normal');
+        doc.setTextColor(75, 85, 99);
+        doc.text(`Total Expenses (Expenses + Paid Bills + Rental Fees): LKR ${fmt(totalExpenses)}`, 18, yPos); yPos += 6;
+
+        doc.setFont(undefined, 'bold');
+        if (netBalance >= 0) {
+          doc.setTextColor(21, 128, 61);
+        } else {
+          doc.setTextColor(220, 38, 38);
+        }
+        doc.text(`Net Balance: LKR ${fmt(netBalance)}`, 18, yPos);
+        yPos += 10;
+        doc.setFont(undefined, 'normal');
+        doc.setTextColor(0);
+
+        // 1. Member Contributions Table
+        if (pdfOptions.memberContributions && participants.length > 0) {
+          checkAddPage(30);
+          doc.setFontSize(12);
+          doc.setFont(undefined, 'bold');
+          doc.setTextColor(17, 24, 39);
+          doc.text('Member Contributions (Participants)', 14, yPos);
+          yPos += 4;
+          doc.setFont(undefined, 'normal');
+
+          const memberRows = participants.map(p => {
+            const materialsStr = p.materialsContributed && p.materialsContributed.length > 0
+              ? p.materialsContributed.map(m => `${m.itemName}${m.quantity ? ` (${m.quantity})` : ''}`).join(', ')
+              : 'None';
+            return [
+              p.name,
+              p.directContribution > 0 ? `LKR ${fmt(p.directContribution)}` : 'LKR 0',
+              materialsStr
+            ];
+          });
+
+          autoTable(doc, {
+            head: [['Member Name', 'Direct Cash Contribution', 'Materials Contributed']],
+            body: memberRows,
+            startY: yPos,
+            theme: 'striped',
+            headStyles: { fillColor: [21, 128, 61], textColor: 255, fontStyle: 'bold' },
+            styles: { fontSize: 9 }
+          });
           yPos = doc.lastAutoTable.finalY + 10;
         }
 
-        if (pdfOptions.leftoverAssets && summaryData.nonFinancialContributors.length > 0) {
-          doc.setFontSize(14);
-          doc.text('Materials & Assets Contributed', 14, yPos); yPos += 6;
-          const rows = [];
-          summaryData.nonFinancialContributors.forEach(c => {
-            c.materials.forEach(m => rows.push([c.name, m.itemName, m.quantity]));
+        // 2. Public Donations Table
+        if (pdfOptions.publicDonations && publicDonations.length > 0) {
+          checkAddPage(30);
+          doc.setFontSize(12);
+          doc.setFont(undefined, 'bold');
+          doc.setTextColor(17, 24, 39);
+          doc.text('Public Donations (External / Till / Box)', 14, yPos);
+          yPos += 4;
+          doc.setFont(undefined, 'normal');
+
+          const donationRows = publicDonations.map(d => [
+            d.donorName || 'Anonymous',
+            `LKR ${fmt(d.amount)}`,
+            d.dateReceived ? new Date(d.dateReceived).toLocaleDateString() : 'N/A'
+          ]);
+
+          autoTable(doc, {
+            head: [['Donor Name', 'Amount', 'Date Received']],
+            body: donationRows,
+            startY: yPos,
+            theme: 'striped',
+            headStyles: { fillColor: [30, 64, 175], textColor: 255, fontStyle: 'bold' },
+            styles: { fontSize: 9 }
           });
-          autoTable(doc, { head: [['Contributor', 'Item', 'Quantity']], body: rows, startY: yPos });
+          yPos = doc.lastAutoTable.finalY + 10;
+        }
+
+        // 3. Shop Bills Table
+        if (pdfOptions.shopBills && pendingBills.length > 0) {
+          checkAddPage(30);
+          doc.setFontSize(12);
+          doc.setFont(undefined, 'bold');
+          doc.setTextColor(17, 24, 39);
+          doc.text('Shop Bills (Vendor Details & Status)', 14, yPos);
+          yPos += 4;
+          doc.setFont(undefined, 'normal');
+
+          const billRows = pendingBills.map(b => [
+            b.vendorName,
+            b.description || '-',
+            `LKR ${fmt(b.amount)}`,
+            b.isPaid ? 'Paid' : 'Pending'
+          ]);
+
+          autoTable(doc, {
+            head: [['Vendor Name', 'Description', 'Amount', 'Settlement Status']],
+            body: billRows,
+            startY: yPos,
+            theme: 'striped',
+            headStyles: { fillColor: [217, 119, 6], textColor: 255, fontStyle: 'bold' },
+            styles: { fontSize: 9 }
+          });
+          yPos = doc.lastAutoTable.finalY + 10;
+        }
+
+        // 4. Borrowed Items Table
+        if (pdfOptions.borrowedItems && borrowedItems.length > 0) {
+          checkAddPage(30);
+          doc.setFontSize(12);
+          doc.setFont(undefined, 'bold');
+          doc.setTextColor(17, 24, 39);
+          doc.text('Borrowed Items & Rental Fees', 14, yPos);
+          yPos += 4;
+          doc.setFont(undefined, 'normal');
+
+          const itemRows = borrowedItems.map(i => [
+            i.itemName,
+            i.borrowedFrom || '-',
+            i.takenBy || '-',
+            i.rentalFee > 0 ? `LKR ${fmt(i.rentalFee)}` : 'Free / No Fee',
+            i.isReturned ? 'Returned' : 'Not Returned'
+          ]);
+
+          autoTable(doc, {
+            head: [['Item Name', 'Lender / Borrowed From', 'Taken By', 'Rental Fee', 'Status']],
+            body: itemRows,
+            startY: yPos,
+            theme: 'striped',
+            headStyles: { fillColor: [109, 40, 217], textColor: 255, fontStyle: 'bold' },
+            styles: { fontSize: 9 }
+          });
+          yPos = doc.lastAutoTable.finalY + 10;
+        }
+
+        // 5. Task Management Table
+        if (pdfOptions.tasks && tasks.length > 0) {
+          checkAddPage(30);
+          doc.setFontSize(12);
+          doc.setFont(undefined, 'bold');
+          doc.setTextColor(17, 24, 39);
+          doc.text('Task Management Log', 14, yPos);
+          yPos += 4;
+          doc.setFont(undefined, 'normal');
+
+          const taskRows = tasks.map(t => [
+            t.taskName,
+            t.assignedLead || 'Unassigned',
+            (t.status || 'pending').replace('_', ' ').toUpperCase()
+          ]);
+
+          autoTable(doc, {
+            head: [['Task Name', 'Assigned Lead', 'Status']],
+            body: taskRows,
+            startY: yPos,
+            theme: 'striped',
+            headStyles: { fillColor: [55, 65, 81], textColor: 255, fontStyle: 'bold' },
+            styles: { fontSize: 9 }
+          });
+          yPos = doc.lastAutoTable.finalY + 10;
+        }
+
+        // 6. Leftover / Reusable Assets Table
+        if (pdfOptions.leftoverAssets) {
+          const materialRows = [];
+          participants.forEach(p => {
+            if (p.materialsContributed && p.materialsContributed.length > 0) {
+              p.materialsContributed.forEach(m => {
+                materialRows.push([m.itemName, p.name, m.quantity || '-', m.notes || '-']);
+              });
+            }
+          });
+
+          if (materialRows.length > 0) {
+            checkAddPage(30);
+            doc.setFontSize(12);
+            doc.setFont(undefined, 'bold');
+            doc.setTextColor(17, 24, 39);
+            doc.text('Leftover / Reusable Materials & Assets', 14, yPos);
+            yPos += 4;
+            doc.setFont(undefined, 'normal');
+
+            autoTable(doc, {
+              head: [['Item Name', 'Contributor / Source', 'Quantity', 'Notes']],
+              body: materialRows,
+              startY: yPos,
+              theme: 'striped',
+              headStyles: { fillColor: [13, 148, 136], textColor: 255, fontStyle: 'bold' },
+              styles: { fontSize: 9 }
+            });
+            yPos = doc.lastAutoTable.finalY + 10;
+          }
+        }
+
+        // 7. General Expenses Log Table
+        if (pdfOptions.generalExpenses && expenses.length > 0) {
+          checkAddPage(30);
+          doc.setFontSize(12);
+          doc.setFont(undefined, 'bold');
+          doc.setTextColor(17, 24, 39);
+          doc.text('General Expenses Log', 14, yPos);
+          yPos += 4;
+          doc.setFont(undefined, 'normal');
+
+          const expenseRows = expenses.map(e => {
+            const payer = e.paidBy === 'FUND'
+              ? 'Common Fund'
+              : (participants.find(p => p._id === e.paidBy)?.name || e.paidBy || '-');
+            return [
+              e.description,
+              payer,
+              `LKR ${fmt(e.amount)}`,
+              e.date ? new Date(e.date).toLocaleDateString() : 'N/A'
+            ];
+          });
+
+          autoTable(doc, {
+            head: [['Description', 'Paid By', 'Amount', 'Date']],
+            body: expenseRows,
+            startY: yPos,
+            theme: 'striped',
+            headStyles: { fillColor: [220, 38, 38], textColor: 255, fontStyle: 'bold' },
+            styles: { fontSize: 9 }
+          });
           yPos = doc.lastAutoTable.finalY + 10;
         }
 
       } else {
         // Standard Trip/Party Mode PDF Generation
-        doc.setFontSize(12);
-        doc.text(`Total Event Expense: LKR ${fmt(summaryData.totalSpent)}`, 14, yPos); yPos += 6;
-        doc.text(`Total Expected Fund: LKR ${fmt(summaryData.totalExpected)}`, 14, yPos); yPos += 6;
-        doc.text(`Deficit/Overrun: LKR ${fmt(summaryData.deficit)}`, 14, yPos); yPos += 6;
-        doc.text(`Deficit Share (per-person): LKR ${fmt(summaryData.deficitShare)}`, 14, yPos); yPos += 10;
+        checkAddPage(40);
+        doc.setFontSize(13);
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(17, 24, 39);
+        doc.text('Financial Summary', 14, yPos);
+        yPos += 6;
+
+        doc.setFontSize(10);
+        doc.setFont(undefined, 'normal');
+        doc.setTextColor(75, 85, 99);
+        doc.text(`Total Event Expense: LKR ${fmt(summaryData.totalSpent)}`, 18, yPos); yPos += 5;
+        doc.text(`Total Expected Fund: LKR ${fmt(summaryData.totalExpected)}`, 18, yPos); yPos += 5;
+        doc.text(`Deficit/Overrun: LKR ${fmt(summaryData.deficit)}`, 18, yPos); yPos += 5;
+        doc.text(`Deficit Share (per-person): LKR ${fmt(summaryData.deficitShare)}`, 18, yPos); yPos += 10;
 
         // Balances Table
-        const tableColumn = ['Participant', 'Target', 'Deposit', 'Paid', 'Liability', 'Balance'];
-        const tableRows = (summaryData.balances || []).map(b => {
-          let balanceText = 'Settled';
-          if (b.balance > 0.01) balanceText = `Owes LKR ${fmt(b.balance)}`;
-          else if (b.balance < -0.01) balanceText = `Refund LKR ${fmt(Math.abs(b.balance))}`;
-          return [b.name, `LKR ${fmt(b.baseFee)}`, `LKR ${fmt(b.initialDeposit)}`, `LKR ${fmt(b.totalPaid)}`, `LKR ${fmt(b.liability)}`, balanceText];
-        });
-        autoTable(doc, { head: [tableColumn], body: tableRows, startY: yPos });
+        if (pdfOptions.memberContributions) {
+          checkAddPage(30);
+          doc.setFontSize(12);
+          doc.setFont(undefined, 'bold');
+          doc.setTextColor(17, 24, 39);
+          doc.text('Participant Balances & Settlement Breakdown', 14, yPos);
+          yPos += 4;
+          doc.setFont(undefined, 'normal');
+
+          const tableColumn = ['Participant', 'Target', 'Deposit', 'Paid', 'Liability', 'Balance'];
+          const tableRows = (summaryData.balances || []).map(b => {
+            let balanceText = 'Settled';
+            if (b.balance > 0.01) balanceText = `Owes LKR ${fmt(b.balance)}`;
+            else if (b.balance < -0.01) balanceText = `Refund LKR ${fmt(Math.abs(b.balance))}`;
+            return [b.name, `LKR ${fmt(b.baseFee)}`, `LKR ${fmt(b.initialDeposit)}`, `LKR ${fmt(b.totalPaid)}`, `LKR ${fmt(b.liability)}`, balanceText];
+          });
+          autoTable(doc, { head: [tableColumn], body: tableRows, startY: yPos, theme: 'striped' });
+          yPos = doc.lastAutoTable.finalY + 10;
+        }
+
+        // General Expenses Table
+        if (pdfOptions.generalExpenses && expenses.length > 0) {
+          checkAddPage(30);
+          doc.setFontSize(12);
+          doc.setFont(undefined, 'bold');
+          doc.setTextColor(17, 24, 39);
+          doc.text('General Expenses Log', 14, yPos);
+          yPos += 4;
+          doc.setFont(undefined, 'normal');
+
+          const expenseRows = expenses.map(e => {
+            const payer = e.paidBy === 'FUND'
+              ? 'Common Fund'
+              : (participants.find(p => p._id === e.paidBy)?.name || e.paidBy || '-');
+            return [
+              e.description,
+              payer,
+              `LKR ${fmt(e.amount)}`,
+              e.date ? new Date(e.date).toLocaleDateString() : 'N/A'
+            ];
+          });
+
+          autoTable(doc, {
+            head: [['Description', 'Paid By', 'Amount', 'Date']],
+            body: expenseRows,
+            startY: yPos,
+            theme: 'striped',
+            headStyles: { fillColor: [220, 38, 38], textColor: 255, fontStyle: 'bold' },
+            styles: { fontSize: 9 }
+          });
+          yPos = doc.lastAutoTable.finalY + 10;
+        }
       }
 
       doc.save(`${activeEvent.name.replace(/\s+/g, '_')}_Report.pdf`);
@@ -509,31 +800,55 @@ export default function Summary() {
       )}
 
       {showPDFModal && (
-        <ModalOverlay>
-          <ModalContent>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0 }}>Configure Report</h3>
-              <button onClick={() => setShowPDFModal(false)} style={{ background: 'none', border: 'none', color: '#999', cursor: 'pointer', fontSize: '1.2rem' }}>&times;</button>
+        <ModalOverlay onClick={() => setShowPDFModal(false)}>
+          <ModalContent onClick={e => e.stopPropagation()} style={{ maxWidth: '460px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ margin: 0, fontSize: '1.25rem' }}>Configure PDF Report</h3>
+              <button onClick={() => setShowPDFModal(false)} style={{ background: 'none', border: 'none', color: '#999', cursor: 'pointer', fontSize: '1.5rem' }}>&times;</button>
             </div>
             
+            <p style={{ fontSize: '0.85rem', color: '#9CA3AF', marginBottom: '16px' }}>
+              Select the sections to include in the generated PDF report:
+            </p>
+
             <CheckboxRow>
-              <input type="checkbox" checked={pdfOptions.financialContributors} onChange={e => setPdfOptions({...pdfOptions, financialContributors: e.target.checked})} />
-              Include Financial Contributors List (Members)
+              <input type="checkbox" checked={pdfOptions.memberContributions} onChange={e => setPdfOptions({...pdfOptions, memberContributions: e.target.checked})} />
+              Include Member Contributions (Participants)
             </CheckboxRow>
             <CheckboxRow>
               <input type="checkbox" checked={pdfOptions.publicDonations} onChange={e => setPdfOptions({...pdfOptions, publicDonations: e.target.checked})} />
-              Include Public Donations List (External/Till money)
+              Include Public Donations (External / Till / Box)
+            </CheckboxRow>
+            <CheckboxRow>
+              <input type="checkbox" checked={pdfOptions.shopBills} onChange={e => setPdfOptions({...pdfOptions, shopBills: e.target.checked})} />
+              Include Shop Bills (Vendor details & Status)
+            </CheckboxRow>
+            <CheckboxRow>
+              <input type="checkbox" checked={pdfOptions.borrowedItems} onChange={e => setPdfOptions({...pdfOptions, borrowedItems: e.target.checked})} />
+              Include Borrowed Items & Rental Fees
+            </CheckboxRow>
+            <CheckboxRow>
+              <input type="checkbox" checked={pdfOptions.tasks} onChange={e => setPdfOptions({...pdfOptions, tasks: e.target.checked})} />
+              Include Task Management Log
             </CheckboxRow>
             <CheckboxRow>
               <input type="checkbox" checked={pdfOptions.leftoverAssets} onChange={e => setPdfOptions({...pdfOptions, leftoverAssets: e.target.checked})} />
-              Include Leftover/Reusable Assets
+              Include Leftover / Reusable Assets
             </CheckboxRow>
             <CheckboxRow>
-              <input type="checkbox" checked={pdfOptions.settledExpenses} onChange={e => setPdfOptions({...pdfOptions, settledExpenses: e.target.checked})} />
-              Include Fully Settled Expenses
+              <input type="checkbox" checked={pdfOptions.generalExpenses} onChange={e => setPdfOptions({...pdfOptions, generalExpenses: e.target.checked})} />
+              Include General Expenses Log
             </CheckboxRow>
 
-            <ActionButton style={{ width: '100%' }} onClick={generatePDF}>Generate PDF</ActionButton>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+              <ActionButton style={{ flex: 1, marginTop: 0 }} onClick={generatePDF}>Generate PDF</ActionButton>
+              <button 
+                onClick={() => setShowPDFModal(false)}
+                style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid #4B5563', color: '#E5E7EB', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+              >
+                Cancel
+              </button>
+            </div>
           </ModalContent>
         </ModalOverlay>
       )}
