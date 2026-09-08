@@ -12,40 +12,42 @@ const Container = styled.div`
 
 const AttendeeGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 12px;
 `;
 
 const AttendeeChip = styled.div`
   background-color: ${props => props.theme.colors.card};
   border: 1px solid ${props => props.theme.colors.border};
-  border-radius: ${props => props.theme.radius.round};
-  padding: 8px 16px;
+  border-radius: ${props => props.theme.radius.md || '12px'};
+  padding: 10px 14px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   box-shadow: ${props => props.theme.shadows.base};
 `;
 
 const Avatar = styled.div`
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   background-color: ${props => props.color || '#E0E0E0'};
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   color: white;
   overflow: hidden;
+  flex-shrink: 0;
+  margin-top: 2px;
 
   img { width: 100%; height: 100%; object-fit: cover; }
 `;
 
 const Name = styled.span`
   font-size: 0.9rem;
-  font-weight: 500;
+  font-weight: 600;
   color: ${props => props.theme.colors.text};
   flex: 1;
 `;
@@ -74,6 +76,7 @@ const DetailsWrapper = styled.div`
   flex-direction: column;
   flex: 1;
   gap: 4px;
+  min-width: 0;
 `;
 
 const EditBtn = styled.button`
@@ -119,8 +122,8 @@ export default function ParticipantList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [participantToEdit, setParticipantToEdit] = useState(null);
 
-  const handleAddParticipant = async (name, phone, paymentMode, fixedAmount, initialDeposit) => {
-    await addParticipant(name, phone, paymentMode, fixedAmount, initialDeposit);
+  const handleAddParticipant = async (name, phone, paymentMode, fixedAmount, initialDeposit, directContribution, materialsContributed) => {
+    await addParticipant(name, phone, paymentMode, fixedAmount, initialDeposit, directContribution, materialsContributed);
   };
 
   const handleUpdateParticipant = async (id, data) => {
@@ -160,11 +163,37 @@ export default function ParticipantList() {
               <DetailsWrapper>
                 <Name>{p.name}</Name>
                 {p.initialDeposit > 0 && (
-                  <div style={{ fontSize: '0.72rem', color: '#1d4ed8', fontWeight: '700', marginBottom: '2px' }}>
-                    💰 LKR {p.initialDeposit.toLocaleString()}
+                  <div style={{ fontSize: '0.72rem', color: '#1d4ed8', fontWeight: '700' }}>
+                    💰 Deposit: LKR {p.initialDeposit.toLocaleString()}
                   </div>
                 )}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                {p.directContribution > 0 && (
+                  <div style={{ fontSize: '0.72rem', color: '#15803d', fontWeight: '700' }}>
+                    🤝 Contribution: LKR {p.directContribution.toLocaleString()}
+                  </div>
+                )}
+                {p.materialsContributed && p.materialsContributed.length > 0 && (
+                  <div style={{ fontSize: '0.7rem', color: '#6d28d9', marginTop: '2px' }}>
+                    <div style={{ fontWeight: '600', marginBottom: '2px' }}>📦 Materials:</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
+                      {p.materialsContributed.map((m, mIdx) => (
+                        <span 
+                          key={mIdx} 
+                          style={{ 
+                            background: '#f5f3ff', 
+                            border: '1px solid #ddd6fe', 
+                            borderRadius: '4px', 
+                            padding: '1px 5px', 
+                            fontSize: '0.65rem' 
+                          }}
+                        >
+                          {m.itemName}{m.quantity ? ` (${m.quantity})` : ''}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap', marginTop: '2px' }}>
                   {balanceTag}
                   {p.paymentMode === 'Fixed Amount' && (
                     <ModeTag isFixed>Fixed</ModeTag>
@@ -173,7 +202,7 @@ export default function ParticipantList() {
               </DetailsWrapper>
               
               {isModerator(activeEvent) && (
-                <EditBtn onClick={() => handleEditClick(p)}>✎</EditBtn>
+                <EditBtn onClick={() => handleEditClick(p)} title="Edit Participant">✎</EditBtn>
               )}
             </AttendeeChip>
           );

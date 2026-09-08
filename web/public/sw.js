@@ -22,10 +22,7 @@ self.addEventListener('fetch', event => {
         if (response) {
           return response;
         }
-        return fetch(event.request).catch(() => {
-          // Fallback logic could go here
-        });
-      }
-    )
+        return fetch(event.request);
+      })
   );
 });

@@ -296,12 +296,26 @@ export const BudgetProvider = ({ children }) => {
     }
   }
 
-  const totalFundCollected = participants.reduce((acc, p) => acc + (p.initialDeposit || 0), 0);
-  const totalSpent = expenses.reduce((acc, curr) => acc + curr.amount, 0);
-  const budgetAmount = totalFundCollected > 0 ? totalFundCollected : (activeEvent ? activeEvent.totalBudget : 0);
+  const totalDirectContributions = participants.reduce((acc, p) => acc + (p.directContribution || 0), 0);
+  const totalDeposits = participants.reduce((acc, p) => acc + (p.initialDeposit || 0), 0);
+  const totalPublicDonations = publicDonations.reduce((acc, pd) => acc + (pd.amount || 0), 0);
+  const totalFundCollected = totalDeposits + totalDirectContributions + totalPublicDonations;
+
+  const totalSpent = expenses.reduce((acc, curr) => acc + curr.amount, 0) +
+    borrowedItems.reduce((acc, bi) => acc + (bi.rentalFee || 0), 0) +
+    pendingBills.filter(pb => pb.isPaid).reduce((acc, pb) => acc + (pb.amount || 0), 0);
+
+  const isCommunity = activeEvent?.eventType === 'community_project';
+  const budgetAmount = isCommunity
+    ? totalFundCollected
+    : (totalFundCollected > 0 ? totalFundCollected : (activeEvent ? activeEvent.totalBudget : 0));
 
   const totals = {
     budget: budgetAmount,
+    totalFundCollected,
+    totalDirectContributions,
+    totalDeposits,
+    totalPublicDonations,
     spent: totalSpent,
     remaining: budgetAmount - totalSpent,
     participantCount: participants.length

@@ -32,15 +32,15 @@ const Sidebar = styled.aside`
   transition: transform 0.3s ease-in-out;
 
   @media (max-width: 1024px) {
-    transform: ${props => props.open ? 'translateX(0)' : 'translateX(-100%)'};
-    box-shadow: ${props => props.open ? '10px 0 30px rgba(0,0,0,0.1)' : 'none'};
+    transform: ${props => props.$open ? 'translateX(0)' : 'translateX(-100%)'};
+    box-shadow: ${props => props.$open ? '10px 0 30px rgba(0,0,0,0.1)' : 'none'};
   }
 `;
 
 const Overlay = styled.div`
   display: none;
   @media (max-width: 1024px) {
-    display: ${props => props.show ? 'block' : 'none'};
+    display: ${props => props.$show ? 'block' : 'none'};
     position: fixed;
     top: 0;
     left: 0;
@@ -261,8 +261,8 @@ export default function MainLayout() {
   return (
     <AppContainer>
       <GlobalStyle />
-      <Overlay show={sidebarOpen} onClick={() => setSidebarOpen(false)} />
-      <Sidebar open={sidebarOpen}>
+      <Overlay $show={sidebarOpen} onClick={() => setSidebarOpen(false)} />
+      <Sidebar $open={sidebarOpen}>
         <LogoArea>
           <LogoIcon />
           Set Budget
